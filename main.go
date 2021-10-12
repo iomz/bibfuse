@@ -2,35 +2,34 @@ package main
 
 import (
 	"database/sql"
+	"database/sql/driver"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
+	"runtime/debug"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/nickng/bibtex"
 )
 
-var (
-	infile = flag.String("in", "", "Input file (default: stdin)")
-	reader = os.Stdin
-)
-
 // writeToDB write the BibEntry to the sqlite3 database
-func writeToDB(db *sql.DB, entry *bibtex.BibEntry) error {
+func writeToDB(db *sql.DB, entry *bibtex.BibEntry) (driver.Result, error) {
 	tx, err := db.Begin()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer tx.Commit()
 
+	var res driver.Result
 	switch entry.Type {
 	case "article":
 		stmt, err := tx.Prepare("INSERT INTO entries (cite_name, cite_type, author, title, doi, isbn, issn, journal, keyword, metanote, number, numpages, pages, publisher, url, volume, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
 		defer stmt.Close()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		for _, f := range [...]string{"author", "title", "journal", "year"} {
 			if _, ok := entry.Fields[f]; !ok {
@@ -42,7 +41,7 @@ func writeToDB(db *sql.DB, entry *bibtex.BibEntry) error {
 				entry.AddField(f, bibtex.NewBibConst("(OPTIONAL)"))
 			}
 		}
-		_, err = stmt.Exec(entry.CiteName,
+		res, err = stmt.Exec(entry.CiteName,
 			entry.Type,
 			entry.Fields["author"],
 			entry.Fields["title"],
@@ -64,7 +63,7 @@ func writeToDB(db *sql.DB, entry *bibtex.BibEntry) error {
 		stmt, err := tx.Prepare("INSERT INTO entries (cite_name, cite_type, author, title, doi, edition, isbn, issn, metanote, publisher, url, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
 		defer stmt.Close()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		for _, f := range [...]string{"author", "title", "publisher", "year"} {
 			if _, ok := entry.Fields[f]; !ok {
@@ -76,8 +75,7 @@ func writeToDB(db *sql.DB, entry *bibtex.BibEntry) error {
 				entry.AddField(f, bibtex.NewBibConst("(OPTIONAL)"))
 			}
 		}
-		_, err = stmt.Exec()
-		_, err = stmt.Exec(entry.CiteName,
+		res, err = stmt.Exec(entry.CiteName,
 			entry.Type,
 			entry.Fields["author"],
 			entry.Fields["title"],
@@ -94,7 +92,7 @@ func writeToDB(db *sql.DB, entry *bibtex.BibEntry) error {
 		stmt, err := tx.Prepare("INSERT INTO entries (cite_name, cite_type, author, title, booktitle, doi, isbn, issn, keyword, metanote, numpages, pages, publisher, url, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
 		defer stmt.Close()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		for _, f := range [...]string{"author", "title", "booktitle", "publisher", "year"} {
 			if _, ok := entry.Fields[f]; !ok {
@@ -106,7 +104,7 @@ func writeToDB(db *sql.DB, entry *bibtex.BibEntry) error {
 				entry.AddField(f, bibtex.NewBibConst("(OPTIONAL)"))
 			}
 		}
-		_, err = stmt.Exec(entry.CiteName,
+		res, err = stmt.Exec(entry.CiteName,
 			entry.Type,
 			entry.Fields["author"],
 			entry.Fields["title"],
@@ -124,12 +122,11 @@ func writeToDB(db *sql.DB, entry *bibtex.BibEntry) error {
 			entry.Fields["volume"],
 			entry.Fields["year"],
 		)
-
 	case "inproceedings":
 		stmt, err := tx.Prepare("INSERT INTO entries (cite_name, cite_type, author, title, booktitle, doi, isbn, issn, keyword, location, metanote, numpages, pages, publisher, series, url, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
 		defer stmt.Close()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		for _, f := range [...]string{"author", "title", "booktitle", "year"} {
 			if _, ok := entry.Fields[f]; !ok {
@@ -141,7 +138,7 @@ func writeToDB(db *sql.DB, entry *bibtex.BibEntry) error {
 				entry.AddField(f, bibtex.NewBibConst("(OPTIONAL)"))
 			}
 		}
-		_, err = stmt.Exec(entry.CiteName,
+		res, err = stmt.Exec(entry.CiteName,
 			entry.Type,
 			entry.Fields["author"],
 			entry.Fields["title"],
@@ -163,7 +160,7 @@ func writeToDB(db *sql.DB, entry *bibtex.BibEntry) error {
 		stmt, err := tx.Prepare("INSERT INTO entries (cite_name, cite_type, author, title, institution, metanote, note, url, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
 		defer stmt.Close()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		for _, f := range [...]string{"author", "title", "note", "url", "year"} {
 			if _, ok := entry.Fields[f]; !ok {
@@ -175,7 +172,7 @@ func writeToDB(db *sql.DB, entry *bibtex.BibEntry) error {
 				entry.AddField(f, bibtex.NewBibConst("(OPTIONAL)"))
 			}
 		}
-		_, err = stmt.Exec(entry.CiteName,
+		res, err = stmt.Exec(entry.CiteName,
 			entry.Type,
 			entry.Fields["author"],
 			entry.Fields["title"],
@@ -189,7 +186,7 @@ func writeToDB(db *sql.DB, entry *bibtex.BibEntry) error {
 		stmt, err := tx.Prepare("INSERT INTO entries (cite_name, cite_type, author, title, institution, metanote, series, url, version, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
 		defer stmt.Close()
 		if err != nil {
-			return err
+			return nil, err
 		}
 		for _, f := range [...]string{"author", "title", "institution", "year"} {
 			if _, ok := entry.Fields[f]; !ok {
@@ -201,7 +198,7 @@ func writeToDB(db *sql.DB, entry *bibtex.BibEntry) error {
 				entry.AddField(f, bibtex.NewBibConst("(OPTIONAL)"))
 			}
 		}
-		_, err = stmt.Exec(entry.CiteName,
+		res, err = stmt.Exec(entry.CiteName,
 			entry.Type,
 			entry.Fields["author"],
 			entry.Fields["title"],
@@ -214,28 +211,33 @@ func writeToDB(db *sql.DB, entry *bibtex.BibEntry) error {
 		)
 	}
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return res, nil
 }
 
 func main() {
+	dbFile := flag.String("db", "bib.db", "The SQLite file to read/write.")
+	noOption := flag.Bool("no-optional", false, "Suppress \"OPTIONAL\" fields in the resulting bibtex.")
+	noTodo := flag.Bool("no-todo", false, "Suppress \"TODO\" fields in the resulting bibtex.")
+	outFile := flag.String("out", "out.bib", "The resulting bibtex to write (it overrides if exists).")
+	version := flag.Bool("version", false, "Print version.")
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage of %s: [options] [.bib ... .bib]\n", os.Args[0])
+		flag.PrintDefaults()
+	}
 	flag.Parse()
-	if *infile != "" || len(flag.Args()) > 0 {
-		if len(flag.Args()) > 0 {
-			*infile = flag.Arg(0)
-		}
-		rdFile, err := os.Open(*infile)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer rdFile.Close()
-		reader = rdFile
+	files := flag.Args()
+
+	// print version
+	if *version {
+		bi, _ := debug.ReadBuildInfo()
+		fmt.Printf("%v\n", bi.Main.Version)
+		os.Exit(0)
 	}
 
 	// create the db
-	dbPath := filepath.Join(".", "bib.db")
-	//log.Printf("Preparing the database: %s", dbPath)
+	dbPath := filepath.Join(".", *dbFile)
 	db, err := sql.Open("sqlite3", dbPath)
 	defer db.Close()
 	if err != nil {
@@ -275,35 +277,38 @@ func main() {
 		log.Fatalf("Table creation failed: %q", err)
 	}
 
-	parsed, err := bibtex.Parse(reader)
-	if err != nil {
-		log.Fatal(err)
-	}
-	/*
-		*config != "" {
-			 	var conf Config
-			 	if _, err := toml.DecodeFile(*config, &conf); err != nil {
-			 		log.Fatalf("Cannot read config: %s", err)
-			 	}
-			 	filter(parsed, &conf)
-			 }
-			fmt.Fprintf(writer, parsed.PrettyString())
-	*/
-
-	for _, entry := range parsed.Entries {
-		if err = writeToDB(db, entry); err != nil {
-			log.Fatalf("[%s] DB writing failed: %s", entry.CiteName, err)
+	// iterate the given files
+	for _, f := range files {
+		filePath := filepath.Join(".", f)
+		log.Printf("Parsing %v", filePath)
+		reader, err := os.Open(filePath)
+		if err != nil {
+			log.Fatal(err)
 		}
-		//fmt.Println(entry.CiteName)
+		defer reader.Close()
+		parsed, err := bibtex.Parse(reader)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// inject each entry to the DB
+		for _, entry := range parsed.Entries {
+			if res, err := writeToDB(db, entry); err != nil {
+				log.Fatalf("[%s] DB writing failed: %s", entry.CiteName, err)
+			} else if res != nil {
+				log.Printf("Added %s", entry.CiteName)
+			}
+		}
+
 	}
 
+	// create a new BibTex to print
+	bib := bibtex.NewBibTex()
 	rows, err := db.Query("SELECT * FROM entries ORDER BY cite_name ASC")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer rows.Close()
-
-	bib := bibtex.NewBibTex()
 	for rows.Next() {
 		var id int
 		var citeName string
@@ -331,7 +336,6 @@ func main() {
 		var version string
 		var volume string
 		var year string
-
 		err = rows.Scan(&id, &citeName, &citeType, &author, &title, &booktitle, &doi, &edition, &keyword, &location, &isbn, &issn, &institution, &journal, &metanote, &note, &number, &numpages, &pages, &publisher, &series, &techreportType, &url, &version, &volume, &year)
 		if err != nil {
 			log.Fatal(err)
@@ -368,10 +372,29 @@ func main() {
 			}
 		}
 		bib.AddEntry(entry)
+		err = rows.Err()
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
-	err = rows.Err()
+
+	// leave out (OPTION) and (TODO) if the options are given
+	outString := bib.PrettyString()
+	if *noOption {
+		re := regexp.MustCompile("(?m)[\r\n]+^.*(OPTIONAL).*$")
+		outString = re.ReplaceAllString(outString, "")
+	}
+	if *noTodo {
+		re := regexp.MustCompile("(?m)[\r\n]+^.*(TODO).*$")
+		outString = re.ReplaceAllString(outString, "")
+	}
+
+	// write to a file
+	outPath := filepath.Join(".", *outFile)
+	writer, err := os.OpenFile(outPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Fprintf(os.Stdout, bib.PrettyString())
+	defer writer.Close()
+	fmt.Fprintf(writer, outString)
 }
