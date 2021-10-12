@@ -34,7 +34,7 @@ The mandatory fields are filled with `(TODO)` and optional fileds are filled wit
 ### Journal articles
 ```
 @article{mizutani2021article 
-    title     = {{A Title of the Article}},
+    title     = {{Title of the Article}},
     author    = {Mizutani, Iori},
     doi       = "(OPTIONAL)",
     isbn      = "(OPTIONAL)",
@@ -55,7 +55,7 @@ The mandatory fields are filled with `(TODO)` and optional fileds are filled wit
 ### Books
 ```
 @book{mizutani2021book,
-    title     = {{A Title of the Book}},
+    title     = {{Title of the Book}},
     author    = "Mizutani, Iori"
     url       = "(OPTIONAL)",
     address   = "London, United Kingdom",
@@ -69,10 +69,10 @@ The mandatory fields are filled with `(TODO)` and optional fileds are filled wit
 }
 ```
 
-### Conference papers, lecture notes, etc.
+### Conference papers, lecture notes, extended abstract, etc.
 ```
 @inproceedings{mizutani2012inproceedings,
-    title     = {{A Title of the conference paper}},
+    title     = {{Title of the Conference Paper}},
     author    = "Mizutani, Iori"
     url       = "(OPTIONAL)",
     booktitle = "Proceedings of the Cool Conference 2021",
@@ -93,7 +93,7 @@ The mandatory fields are filled with `(TODO)` and optional fileds are filled wit
 ### Online resources, artifacts, etc.
 ```
 @misc{mizutani2021misc,
-    title       = "A Title of the resource",
+    title       = "Title of the Resource",
     author      = "Mizutani, Iori"
     url         = "(TODO)",
     institution = "(TODO)",
@@ -107,7 +107,7 @@ The mandatory fields are filled with `(TODO)` and optional fileds are filled wit
 ### Standards, specifications, white papers, etc.
 ```
 @techreport{mizutani2021techreport,
-    title       = {{A Title of the technical document}},
+    title       = {{Title of the Technical Document}},
     author      = {{Mizutani, Iori}},
     url         = "(TODO)",
     institution = {{TODO}},
