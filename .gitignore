@@ -17,3 +17,4 @@
 # Other intermediate files
 *.bib
 *.db
+*..db-journal
