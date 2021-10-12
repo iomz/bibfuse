@@ -1,6 +1,25 @@
 # bibfuse
 A CLI tool to manage bibtex entries using [nickng/bibtex](https://github.com/nickng/bibtex).
 
+Create a SQLite database file (`--db`) from given BibTex files (`*.bib`), and create a single, *clean* `.bib` file (`--out`).
+
+If no `.bib` files are given, it just reads the database and update the BibTex file.
+
+```console
+% bibfuse -h
+Usage of bibfuse: [options] [.bib ... .bib]
+  -db string
+        The SQLite file to read/write. (default "bib.db")
+  -no-optional
+        Suppress "OPTIONAL" fields in the resulting bibtex.
+  -no-todo
+        Suppress "TODO" fields in the resulting bibtex.
+  -out string
+        The resulting bibtex to write (it overrides if exists). (default "out.bib")
+  -version
+        Print version.
+```
+
 ## Synopsis
 This tool takes `.bib` files and filter fields for each entry depending on the type: article, book, inproceedings, misc, and techreport.
 The mandatory fields are filled with `(TODO)` and optional fileds are filled with `(OPTIONAL)` by default.
