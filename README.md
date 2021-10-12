@@ -50,6 +50,12 @@ The mandatory fields are filled with `(TODO)` and optional fileds are filled wit
 }
 ```
 
+## BibTex entry format
+
+bibfuse reflects rather subjective opinion to filter and flag the required fields depending on the type.
+
+Aiming for the compatibility with most of the research publication requirements.
+
 ### Journal articles
 ```
 @article{mizutani2021article
