@@ -15,40 +15,40 @@ The mandatory fields are filled with `(TODO)` and optional fileds are filled wit
 @article{someone2021a,
     title     = {{A Journal Article}},
     author    = "(TODO)",
+    journal   = "(TODO)",
+    year      = "(TODO)",
     url       = "(OPTIONAL)",
     doi       = "(OPTIONAL)",
     isbn      = "(OPTIONAL)",
     issn      = "(OPTIONAL)",
-    journal   = "(TODO)",
     keyword   = "(OPTIONAL)",
     metanote  = "(OPTIONAL)",
-    number    = "(TODO)",
+    number    = "(OPTIONAL)",
     numpages  = "(OPTIONAL)",
     pages     = "(OPTIONAL)",
-    publisher = "(TODO)",
-    volume    = "(TODO)",
-    year      = "(TODO)",
+    publisher = "(OPTIONAL)",
+    volume    = "(OPTIONAL)",
 }
 ```
 
 ### Journal articles
 ```
-@article{mizutani2021article 
+@article{mizutani2021article
     title     = {{Title of the Article}},
-    author    = {Mizutani, Iori},
+    author    = "(TODO)",
+    journal   = "(TODO)",
+    year      = "(TODO)",
     doi       = "(OPTIONAL)",
     isbn      = "(OPTIONAL)",
     issn      = "(OPTIONAL)",
-    journal   = "A cool journal",
     keyword   = "(OPTIONAL)",
     metanote  = "(OPTIONAL)",
-    number    = 1,
+    number    = "(OPTIONAL)",
     numpages  = "(OPTIONAL)",
     pages     = "(OPTIONAL)",
-    publisher = "A cool publisher",
+    publisher = "(OPTIONAL)",
     url       = "(OPTIONAL)",
-    volume    = 1,
-    year      = 2021,
+    volume    = "(OPTIONAL)",
 }
 ```
 
@@ -56,26 +56,27 @@ The mandatory fields are filled with `(TODO)` and optional fileds are filled wit
 ```
 @book{mizutani2021book,
     title     = {{Title of the Book}},
-    author    = "Mizutani, Iori"
-    url       = "(OPTIONAL)",
-    address   = "London, United Kingdom",
+    author    = "(TODO)"
+    publisher = "(TODO)",
+    year      = "(TODO)",
     doi       = "(OPTIONAL)",
-    edition   = "(TODO)",
+    edition   = "(OPTIONAL)",
     isbn      = "(OPTIONAL)",
     issn      = "(OPTIONAL)",
     metanote  = "(OPTIONAL)",
-    publisher = "Pearson Education",
-    year      = 2021,
+    url       = "(OPTIONAL)",
 }
 ```
 
-### Conference papers, lecture notes, extended abstract, etc.
+### Chapters or articles in a book
 ```
-@inproceedings{mizutani2012inproceedings,
-    title     = {{Title of the Conference Paper}},
-    author    = "Mizutani, Iori"
+@incollection{mizutani2012incollection,
+    title     = {{Title of the Book Chapter}},
+    author    = "(TODO)"
+    booktitle = "(TODO)",
+    publisher = "(TODO)",
+    year      = "(TODO)",
     url       = "(OPTIONAL)",
-    booktitle = "Proceedings of the Cool Conference 2021",
     doi       = "(OPTIONAL)",
     isbn      = "(OPTIONAL)",
     issn      = "(OPTIONAL)",
@@ -84,9 +85,28 @@ The mandatory fields are filled with `(TODO)` and optional fileds are filled wit
     metanote  = "(OPTIONAL)",
     numpages  = "(OPTIONAL)",
     pages     = "(OPTIONAL)",
-    publisher = "(TODO)",
     series    = "(OPTIONAL)",
-    year      = 2021,
+}
+```
+
+### Conference papers, lecture notes, extended abstract, etc.
+```
+@inproceedings{mizutani2012inproceedings,
+    title     = {{Title of the Conference Paper}},
+    author    = "(TODO)"
+    booktitle = "(TODO)",
+    year      = "(TODO)",
+    doi       = "(OPTIONAL)",
+    isbn      = "(OPTIONAL)",
+    issn      = "(OPTIONAL)",
+    keyword   = "(OPTIONAL)",
+    location  = "(OPTIONAL)",
+    metanote  = "(OPTIONAL)",
+    numpages  = "(OPTIONAL)",
+    pages     = "(OPTIONAL)",
+    publisher = "(OPTIONAL)",
+    series    = "(OPTIONAL)",
+    url       = "(OPTIONAL)",
 }
 ```
 
@@ -94,13 +114,12 @@ The mandatory fields are filled with `(TODO)` and optional fileds are filled wit
 ```
 @misc{mizutani2021misc,
     title       = "Title of the Resource",
-    author      = "Mizutani, Iori"
-    url         = "(TODO)",
-    institution = "(TODO)",
-    metanote    = "(OPTIONAL)",
-    month       = "(OPTIONAL)",
+    author      = "(TODO)"
     note        = "(TODO)",
-    year        = 2021,
+    url         = "(TODO)",
+    year        = "(TODO)",
+    institution = "(OPTIONAL)",
+    metanote    = "(OPTIONAL)",
 }
 ```
 
@@ -108,13 +127,12 @@ The mandatory fields are filled with `(TODO)` and optional fileds are filled wit
 ```
 @techreport{mizutani2021techreport,
     title       = {{Title of the Technical Document}},
-    author      = {{Mizutani, Iori}},
-    url         = "(TODO)",
-    institution = {{TODO}},
+    author      = "(TODO)",
+    institution = "(TODO)",
+    year        = "(TODO)",
     metanote    = "(OPTIONAL)",
-    month       = "(OPTIONAL)",
     series      = "(OPTIONAL)",
+    url         = "(OPTIONAL)",
     version     = "(OPTIONAL)",
-    year        = 2021,
 }
 ```
