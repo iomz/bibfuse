@@ -14,6 +14,7 @@ import (
 	"github.com/nickng/bibtex"
 )
 
+// BibEntryTemplate holds all the possible fields
 type BibEntryTemplate struct {
 	citeName       string
 	citeType       string
@@ -40,6 +41,46 @@ type BibEntryTemplate struct {
 	version        string
 	volume         string
 	year           string
+}
+
+// createDB creates the db if not exists
+func createDB(dbPath string) (*sql.DB, error) {
+	db, err := sql.Open("sqlite3", dbPath)
+	defer db.Close()
+	if err != nil {
+		return nil, err
+	}
+	_, err = db.Exec(
+		`CREATE TABLE IF NOT EXISTS entries(
+            id INTEGER PRIMARY KEY,
+            cite_name TEXT UNIQUE NOT NULL,
+            cite_type TEXT NOT NULL,
+            author TEXT DEFAULT "",
+            title TEXT DEFAULT "",
+            booktitle TEXT DEFAULT "",
+            doi TEXT DEFAULT "",
+            edition TEXT DEFAULT "",
+            keyword TEXT DEFAULT "",
+            location TEXT DEFAULT "",
+            isbn TEXT DEFAULT "",
+            issn TEXT DEFAULT "",
+            institution TEXT DEFAULT "",
+            journal TEXT DEFAULT "",
+            metanote TEXT DEFAULT "",
+            note TEXT DEFAULT "",
+            number TEXT DEFAULT "",
+            numpages TEXT DEFAULT "",
+            pages TEXT DEFAULT "",
+            publisher TEXT DEFAULT "",
+            series TEXT DEFAULT "",
+            type TEXT DEFAULT "",
+            url TEXT DEFAULT "",
+            version TEXT DEFAULT "",
+            volume TEXT DEFAULT "",
+            year TEXT
+        );`,
+	)
+	return db, err
 }
 
 // getCitationTypeFilter returns tods and optionals []string
@@ -365,41 +406,7 @@ func main() {
 
 	// create the db
 	dbPath := filepath.Join(".", *dbFile)
-	db, err := sql.Open("sqlite3", dbPath)
-	defer db.Close()
-	if err != nil {
-		panic(err)
-	}
-	_, err = db.Exec(
-		`CREATE TABLE IF NOT EXISTS entries(
-            id INTEGER PRIMARY KEY,
-            cite_name TEXT UNIQUE NOT NULL,
-            cite_type TEXT NOT NULL,
-            author TEXT DEFAULT "",
-            title TEXT DEFAULT "",
-            booktitle TEXT DEFAULT "",
-            doi TEXT DEFAULT "",
-            edition TEXT DEFAULT "",
-            keyword TEXT DEFAULT "",
-            location TEXT DEFAULT "",
-            isbn TEXT DEFAULT "",
-            issn TEXT DEFAULT "",
-            institution TEXT DEFAULT "",
-            journal TEXT DEFAULT "",
-            metanote TEXT DEFAULT "",
-            note TEXT DEFAULT "",
-            number TEXT DEFAULT "",
-            numpages TEXT DEFAULT "",
-            pages TEXT DEFAULT "",
-            publisher TEXT DEFAULT "",
-            series TEXT DEFAULT "",
-            type TEXT DEFAULT "",
-            url TEXT DEFAULT "",
-            version TEXT DEFAULT "",
-            volume TEXT DEFAULT "",
-            year TEXT
-        );`,
-	)
+	db, err := createDB(dbPath)
 	if err != nil {
 		log.Fatalf("Table creation failed: %q", err)
 	}
@@ -425,13 +432,13 @@ func main() {
 				defer stmt.Close()
 			}
 			if err != nil {
-                if err.Error() == "UNIQUE constraint failed: entries.cite_name" {
-				    if *verbose {
-				    	log.Printf("[%s] %s", entry.CiteName, err)
-				    }
-                } else {
-				    log.Fatalf("[%s] %s", entry.CiteName, err)
-                }
+				if err.Error() == "UNIQUE constraint failed: entries.cite_name" {
+					if *verbose {
+						log.Printf("[%s] %q", entry.CiteName, err)
+					}
+				} else {
+					log.Fatalf("[%s] %q", entry.CiteName, err)
+				}
 			}
 			if res != nil {
 				log.Printf("Added %s", entry.CiteName)
