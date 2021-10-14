@@ -46,7 +46,6 @@ type BibEntryTemplate struct {
 // createDB creates the db if not exists
 func createDB(dbPath string) (*sql.DB, error) {
 	db, err := sql.Open("sqlite3", dbPath)
-	defer db.Close()
 	if err != nil {
 		return nil, err
 	}
@@ -184,8 +183,73 @@ func getCitationTypeFilter(citeType string) ([]string, []string) {
 	}
 }
 
-// execInsertStatement returns *driver.Stmt of a sqlite3 INSERT query for the specific citation type
-func execInsertStatement(db *sql.DB, entry *bibtex.BibEntry) (*sql.Stmt, sql.Result, error) {
+// newBibEntry create a new bibtex.BibEntry and return the pointer
+func newBibEntry(bet *BibEntryTemplate) *bibtex.BibEntry {
+	entry := bibtex.NewBibEntry(bet.citeType, bet.citeName)
+	fieldMap := map[string]string{
+		"title":       bet.title,
+		"author":      bet.author,
+		"booktitle":   bet.booktitle,
+		"doi":         bet.doi,
+		"edition":     bet.edition,
+		"keyword":     bet.keyword,
+		"location":    bet.location,
+		"isbn":        bet.isbn,
+		"issn":        bet.issn,
+		"institution": bet.institution,
+		"journal":     bet.journal,
+		"metanote":    bet.metanote,
+		"note":        bet.note,
+		"number":      bet.number,
+		"numpages":    bet.numpages,
+		"pages":       bet.pages,
+		"publisher":   bet.publisher,
+		"series":      bet.series,
+		"type":        bet.techreportType,
+		"url":         bet.url,
+		"version":     bet.version,
+		"volume":      bet.volume,
+		"year":        bet.year,
+	}
+	for k, v := range fieldMap {
+		if v != "" {
+			entry.AddField(k, bibtex.NewBibConst(v))
+		}
+	}
+	return entry
+}
+
+// updateBibTexEntryWithFilter replace the fields with (TODO) and (OPTIONAL)
+func updateBibTexEntryWithFilter(entry *bibtex.BibEntry, todos, optionals []string) {
+	for _, f := range [...]string{"author", "title", "journal", "year"} {
+		if _, ok := entry.Fields[f]; !ok {
+			entry.AddField(f, bibtex.NewBibConst("(TODO)"))
+		}
+	}
+	for _, f := range [...]string{"doi", "isbn", "issn", "keyword", "metanote", "number", "numpages", "pages", "publisher", "volume", "url"} {
+		if _, ok := entry.Fields[f]; !ok {
+			entry.AddField(f, bibtex.NewBibConst("(OPTIONAL)"))
+		}
+	}
+}
+
+// updateBibEntry updates the fields with the filters
+func updateBibEntry(entry *bibtex.BibEntry) {
+	todos, options := getCitationTypeFilter(entry.Type)
+	for _, f := range todos {
+		if _, ok := entry.Fields[f]; !ok {
+			entry.AddField(f, bibtex.NewBibConst("(TODO)"))
+		}
+	}
+	for _, f := range options {
+		if _, ok := entry.Fields[f]; !ok {
+			entry.AddField(f, bibtex.NewBibConst("(OPTIONAL)"))
+		}
+	}
+}
+
+// writeToDB write the BibEntry to the sqlite3 database
+func writeToDB(db *sql.DB, entry *bibtex.BibEntry) (*sql.Stmt, sql.Result, error) {
 	var stmt *sql.Stmt
 	var res sql.Result
 
@@ -314,72 +378,7 @@ func execInsertStatement(db *sql.DB, entry *bibtex.BibEntry) (*sql.Stmt, sql.Res
 		)
 	}
 	return stmt, res, err
-}
 
-// newBibEntry create a new bibtex.BibEntry and return the pointer
-func newBibEntry(bet *BibEntryTemplate) *bibtex.BibEntry {
-	entry := bibtex.NewBibEntry(bet.citeType, bet.citeName)
-	fieldMap := map[string]string{
-		"title":       bet.title,
-		"author":      bet.author,
-		"booktitle":   bet.booktitle,
-		"doi":         bet.doi,
-		"edition":     bet.edition,
-		"keyword":     bet.keyword,
-		"location":    bet.location,
-		"isbn":        bet.isbn,
-		"issn":        bet.issn,
-		"institution": bet.institution,
-		"journal":     bet.journal,
-		"metanote":    bet.metanote,
-		"note":        bet.note,
-		"number":      bet.number,
-		"numpages":    bet.numpages,
-		"pages":       bet.pages,
-		"publisher":   bet.publisher,
-		"series":      bet.series,
-		"type":        bet.techreportType,
-		"url":         bet.url,
-		"version":     bet.version,
-		"volume":      bet.volume,
-		"year":        bet.year,
-	}
-	for k, v := range fieldMap {
-		if v != "" {
-			entry.AddField(k, bibtex.NewBibConst(v))
-		}
-	}
-	return entry
-}
-
-// updateBibTexEntryWithFilter replace the fields with (TODO) and (OPTIONAL)
-func updateBibTexEntryWithFilter(entry *bibtex.BibEntry, todos, optionals []string) {
-	for _, f := range [...]string{"author", "title", "journal", "year"} {
-		if _, ok := entry.Fields[f]; !ok {
-			entry.AddField(f, bibtex.NewBibConst("(TODO)"))
-		}
-	}
-	for _, f := range [...]string{"doi", "isbn", "issn", "keyword", "metanote", "number", "numpages", "pages", "publisher", "volume", "url"} {
-		if _, ok := entry.Fields[f]; !ok {
-			entry.AddField(f, bibtex.NewBibConst("(OPTIONAL)"))
-		}
-	}
-}
-
-// writeToDB write the BibEntry to the sqlite3 database
-func writeToDB(db *sql.DB, entry *bibtex.BibEntry) (*sql.Stmt, sql.Result, error) {
-	todos, options := getCitationTypeFilter(entry.Type)
-	for _, f := range todos {
-		if _, ok := entry.Fields[f]; !ok {
-			entry.AddField(f, bibtex.NewBibConst("(TODO)"))
-		}
-	}
-	for _, f := range options {
-		if _, ok := entry.Fields[f]; !ok {
-			entry.AddField(f, bibtex.NewBibConst("(OPTIONAL)"))
-		}
-	}
-	stmt, res, err := execInsertStatement(db, entry)
 	return stmt, res, err
 }
 
@@ -407,6 +406,7 @@ func main() {
 	// create the db
 	dbPath := filepath.Join(".", *dbFile)
 	db, err := createDB(dbPath)
+	defer db.Close()
 	if err != nil {
 		log.Fatalf("Table creation failed: %q", err)
 	}
@@ -427,6 +427,7 @@ func main() {
 
 		// inject each entry to the DB
 		for _, entry := range parsed.Entries {
+			updateBibEntry(entry)
 			stmt, res, err := writeToDB(db, entry)
 			if stmt != nil {
 				defer stmt.Close()
