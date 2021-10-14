@@ -14,6 +14,34 @@ import (
 	"github.com/nickng/bibtex"
 )
 
+type BibEntryTemplate struct {
+	citeName       string
+	citeType       string
+	title          string
+	author         string
+	booktitle      string
+	doi            string
+	edition        string
+	keyword        string
+	location       string
+	isbn           string
+	issn           string
+	institution    string
+	journal        string
+	metanote       string
+	note           string
+	number         string
+	numpages       string
+	pages          string
+	publisher      string
+	series         string
+	techreportType string
+	url            string
+	version        string
+	volume         string
+	year           string
+}
+
 // getCitationTypeFilter returns tods and optionals []string
 func getCitationTypeFilter(citeType string) ([]string, []string) {
 	switch citeType {
@@ -248,32 +276,32 @@ func execInsertStatement(db *sql.DB, entry *bibtex.BibEntry) (*sql.Stmt, sql.Res
 }
 
 // newBibEntry create a new bibtex.BibEntry and return the pointer
-func newBibEntry(citeName, citeType, title, author, booktitle, doi, edition, keyword, location, isbn, issn, institution, journal, metanote, note, number, numpages, pages, publisher, series, techreportType, url, version, volume, year string) *bibtex.BibEntry {
-	entry := bibtex.NewBibEntry(citeType, citeName)
+func newBibEntry(bet *BibEntryTemplate) *bibtex.BibEntry {
+	entry := bibtex.NewBibEntry(bet.citeType, bet.citeName)
 	fieldMap := map[string]string{
-		"title":       title,
-		"author":      author,
-		"booktitle":   booktitle,
-		"doi":         doi,
-		"edition":     edition,
-		"keyword":     keyword,
-		"location":    location,
-		"isbn":        isbn,
-		"issn":        issn,
-		"institution": institution,
-		"journal":     journal,
-		"metanote":    metanote,
-		"note":        note,
-		"number":      number,
-		"numpages":    numpages,
-		"pages":       pages,
-		"publisher":   publisher,
-		"series":      series,
-		"type":        techreportType,
-		"url":         url,
-		"version":     version,
-		"volume":      volume,
-		"year":        year,
+		"title":       bet.title,
+		"author":      bet.author,
+		"booktitle":   bet.booktitle,
+		"doi":         bet.doi,
+		"edition":     bet.edition,
+		"keyword":     bet.keyword,
+		"location":    bet.location,
+		"isbn":        bet.isbn,
+		"issn":        bet.issn,
+		"institution": bet.institution,
+		"journal":     bet.journal,
+		"metanote":    bet.metanote,
+		"note":        bet.note,
+		"number":      bet.number,
+		"numpages":    bet.numpages,
+		"pages":       bet.pages,
+		"publisher":   bet.publisher,
+		"series":      bet.series,
+		"type":        bet.techreportType,
+		"url":         bet.url,
+		"version":     bet.version,
+		"volume":      bet.volume,
+		"year":        bet.year,
 	}
 	for k, v := range fieldMap {
 		if v != "" {
@@ -396,12 +424,14 @@ func main() {
 			if stmt != nil {
 				defer stmt.Close()
 			}
-			if err.Error() == "UNIQUE constraint failed: entries.cite_name" {
-				if *verbose {
-					log.Printf("[%s] %s", entry.CiteName, err)
-				}
-			} else if err != nil {
-				log.Fatalf("[%s] %s", entry.CiteName, err)
+			if err != nil {
+                if err.Error() == "UNIQUE constraint failed: entries.cite_name" {
+				    if *verbose {
+				    	log.Printf("[%s] %s", entry.CiteName, err)
+				    }
+                } else {
+				    log.Fatalf("[%s] %s", entry.CiteName, err)
+                }
 			}
 			if res != nil {
 				log.Printf("Added %s", entry.CiteName)
@@ -418,36 +448,12 @@ func main() {
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var citeName string
-		var citeType string
-		var title string
-		var author string
-		var booktitle string
-		var doi string
-		var edition string
-		var keyword string
-		var location string
-		var isbn string
-		var issn string
-		var institution string
-		var journal string
-		var metanote string
-		var note string
-		var number string
-		var numpages string
-		var pages string
-		var publisher string
-		var series string
-		var techreportType string
-		var url string
-		var version string
-		var volume string
-		var year string
-		err = rows.Scan(&citeName, &citeType, &title, &author, &booktitle, &doi, &edition, &keyword, &location, &isbn, &issn, &institution, &journal, &metanote, &note, &number, &numpages, &pages, &publisher, &series, &techreportType, &url, &version, &volume, &year)
+		var row BibEntryTemplate
+		err = rows.Scan(&row.citeName, &row.citeType, &row.title, &row.author, &row.booktitle, &row.doi, &row.edition, &row.keyword, &row.location, &row.isbn, &row.issn, &row.institution, &row.journal, &row.metanote, &row.note, &row.number, &row.numpages, &row.pages, &row.publisher, &row.series, &row.techreportType, &row.url, &row.version, &row.volume, &row.year)
 		if err != nil {
 			log.Fatal(err)
 		}
-		entry := newBibEntry(citeName, citeType, title, author, booktitle, doi, edition, keyword, location, isbn, issn, institution, journal, metanote, note, number, numpages, pages, publisher, series, techreportType, url, version, volume, year)
+		entry := newBibEntry(&row)
 		bib.AddEntry(entry)
 		err = rows.Err()
 		if err != nil {
