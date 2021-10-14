@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"database/sql/driver"
 	"flag"
 	"fmt"
 	"log"
@@ -15,36 +14,128 @@ import (
 	"github.com/nickng/bibtex"
 )
 
-// writeToDB write the BibEntry to the sqlite3 database
-func writeToDB(db *sql.DB, entry *bibtex.BibEntry) (driver.Result, error) {
+// getCitationTypeFilter returns tods and optionals []string
+func getCitationTypeFilter(citeType string) ([]string, []string) {
+	switch citeType {
+	case "article":
+		return []string{ // TODOs
+				"author",
+				"title",
+				"journal",
+				"year",
+			}, []string{ // OPTIONALs
+				"doi",
+				"isbn",
+				"issn",
+				"keyword",
+				"metanote",
+				"number",
+				"numpages",
+				"pages",
+				"publisher",
+				"volume",
+				"url",
+			}
+	case "book":
+		return []string{ // TODOs
+				"author",
+				"title",
+				"publisher",
+				"year",
+			}, []string{ // OPTIONALs
+				"doi",
+				"edition",
+				"isbn",
+				"issn",
+				"metanote",
+				"url",
+			}
+	case "incollection":
+		return []string{ // TODOs
+				"author",
+				"title",
+				"booktitle",
+				"publisher",
+				"year",
+			}, []string{ // OPTIONALs
+				"doi",
+				"keyword",
+				"isbn",
+				"issn",
+				"metanote",
+				"numpages",
+				"pages",
+				"url",
+			}
+	case "inproceedings":
+		return []string{ // TODOs
+				"author",
+				"title",
+				"booktitle",
+				"year",
+			}, []string{ // OPTIONALs
+				"doi",
+				"isbn",
+				"issn",
+				"keyword",
+				"location",
+				"metanote",
+				"numpages",
+				"pages",
+				"publisher",
+				"series",
+				"url",
+				"year",
+			}
+	case "misc":
+		return []string{ // TODOs
+				"author",
+				"title",
+				"note",
+				"url",
+				"year",
+			}, []string{ // OPTIONALs
+				"institution",
+				"metanote",
+			}
+	case "techreport":
+		return []string{ // TODOs
+				"author",
+				"title",
+				"institution",
+				"year",
+			}, []string{ // OPTIONALs
+				"metanote",
+				"series",
+				"url",
+				"version",
+			}
+	default:
+		return []string{"Title"}, []string{}
+	}
+}
+
+// execInsertStatement returns *driver.Stmt of a sqlite3 INSERT query for the specific citation type
+func execInsertStatement(db *sql.DB, entry *bibtex.BibEntry) (*sql.Stmt, sql.Result, error) {
+	var stmt *sql.Stmt
+	var res sql.Result
+
 	tx, err := db.Begin()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer tx.Commit()
 
-	var res driver.Result
 	switch entry.Type {
 	case "article":
-		stmt, err := tx.Prepare("INSERT INTO entries (cite_name, cite_type, author, title, doi, isbn, issn, journal, keyword, metanote, number, numpages, pages, publisher, url, volume, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-		defer stmt.Close()
+		stmt, err = tx.Prepare("INSERT INTO entries (cite_name, cite_type, title, author, doi, isbn, issn, journal, keyword, metanote, number, numpages, pages, publisher, url, volume, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
 		if err != nil {
-			return nil, err
-		}
-		for _, f := range [...]string{"author", "title", "journal", "year"} {
-			if _, ok := entry.Fields[f]; !ok {
-				entry.AddField(f, bibtex.NewBibConst("(TODO)"))
-			}
-		}
-		for _, f := range [...]string{"doi", "isbn", "issn", "keyword", "metanote", "number", "numpages", "pages", "publisher", "volume", "url"} {
-			if _, ok := entry.Fields[f]; !ok {
-				entry.AddField(f, bibtex.NewBibConst("(OPTIONAL)"))
-			}
+			log.Fatal(err)
 		}
 		res, err = stmt.Exec(entry.CiteName,
 			entry.Type,
-			entry.Fields["author"],
 			entry.Fields["title"],
+			entry.Fields["author"],
 			entry.Fields["doi"],
 			entry.Fields["isbn"],
 			entry.Fields["issn"],
@@ -60,27 +151,16 @@ func writeToDB(db *sql.DB, entry *bibtex.BibEntry) (driver.Result, error) {
 			entry.Fields["year"],
 		)
 	case "book":
-		stmt, err := tx.Prepare("INSERT INTO entries (cite_name, cite_type, author, title, doi, edition, isbn, issn, metanote, publisher, url, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-		defer stmt.Close()
+		stmt, err = tx.Prepare("INSERT INTO entries (cite_name, cite_type, title, author, doi, edition, isbn, issn, metanote, publisher, url, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
 		if err != nil {
-			return nil, err
-		}
-		for _, f := range [...]string{"author", "title", "publisher", "year"} {
-			if _, ok := entry.Fields[f]; !ok {
-				entry.AddField(f, bibtex.NewBibConst("(TODO)"))
-			}
-		}
-		for _, f := range [...]string{"doi", "edition", "isbn", "issn", "metanote", "url"} {
-			if _, ok := entry.Fields[f]; !ok {
-				entry.AddField(f, bibtex.NewBibConst("(OPTIONAL)"))
-			}
+			log.Fatal(err)
 		}
 		res, err = stmt.Exec(entry.CiteName,
 			entry.Type,
-			entry.Fields["author"],
 			entry.Fields["title"],
-			entry.Fields["edition"],
+			entry.Fields["author"],
 			entry.Fields["doi"],
+			entry.Fields["edition"],
 			entry.Fields["isbn"],
 			entry.Fields["issn"],
 			entry.Fields["metanote"],
@@ -89,59 +169,35 @@ func writeToDB(db *sql.DB, entry *bibtex.BibEntry) (driver.Result, error) {
 			entry.Fields["year"],
 		)
 	case "incollection":
-		stmt, err := tx.Prepare("INSERT INTO entries (cite_name, cite_type, author, title, booktitle, doi, isbn, issn, keyword, metanote, numpages, pages, publisher, url, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-		defer stmt.Close()
+		stmt, err = tx.Prepare("INSERT INTO entries (cite_name, cite_type, title, author, booktitle, doi, isbn, issn, keyword, metanote, numpages, pages, publisher, url, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
 		if err != nil {
-			return nil, err
-		}
-		for _, f := range [...]string{"author", "title", "booktitle", "publisher", "year"} {
-			if _, ok := entry.Fields[f]; !ok {
-				entry.AddField(f, bibtex.NewBibConst("(TODO)"))
-			}
-		}
-		for _, f := range [...]string{"doi", "keyword", "isbn", "issn", "metanote", "numpages", "pages", "url"} {
-			if _, ok := entry.Fields[f]; !ok {
-				entry.AddField(f, bibtex.NewBibConst("(OPTIONAL)"))
-			}
+			log.Fatal(err)
 		}
 		res, err = stmt.Exec(entry.CiteName,
 			entry.Type,
-			entry.Fields["author"],
 			entry.Fields["title"],
+			entry.Fields["author"],
+			entry.Fields["booktitle"],
 			entry.Fields["doi"],
 			entry.Fields["isbn"],
 			entry.Fields["issn"],
-			entry.Fields["journal"],
 			entry.Fields["keyword"],
 			entry.Fields["metanote"],
-			entry.Fields["number"],
 			entry.Fields["numpages"],
 			entry.Fields["pages"],
 			entry.Fields["publisher"],
 			entry.Fields["url"],
-			entry.Fields["volume"],
 			entry.Fields["year"],
 		)
 	case "inproceedings":
-		stmt, err := tx.Prepare("INSERT INTO entries (cite_name, cite_type, author, title, booktitle, doi, isbn, issn, keyword, location, metanote, numpages, pages, publisher, series, url, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-		defer stmt.Close()
+		stmt, err = tx.Prepare("INSERT INTO entries (cite_name, cite_type, title, author, booktitle, doi, isbn, issn, keyword, location, metanote, numpages, pages, publisher, series, url, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
 		if err != nil {
-			return nil, err
-		}
-		for _, f := range [...]string{"author", "title", "booktitle", "year"} {
-			if _, ok := entry.Fields[f]; !ok {
-				entry.AddField(f, bibtex.NewBibConst("(TODO)"))
-			}
-		}
-		for _, f := range [...]string{"doi", "isbn", "issn", "keyword", "location", "metanote", "numpages", "pages", "publisher", "series", "url", "year"} {
-			if _, ok := entry.Fields[f]; !ok {
-				entry.AddField(f, bibtex.NewBibConst("(OPTIONAL)"))
-			}
+			log.Fatal(err)
 		}
 		res, err = stmt.Exec(entry.CiteName,
 			entry.Type,
-			entry.Fields["author"],
 			entry.Fields["title"],
+			entry.Fields["author"],
 			entry.Fields["booktitle"],
 			entry.Fields["doi"],
 			entry.Fields["isbn"],
@@ -157,25 +213,14 @@ func writeToDB(db *sql.DB, entry *bibtex.BibEntry) (driver.Result, error) {
 			entry.Fields["year"],
 		)
 	case "misc":
-		stmt, err := tx.Prepare("INSERT INTO entries (cite_name, cite_type, author, title, institution, metanote, note, url, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-		defer stmt.Close()
+		stmt, err = tx.Prepare("INSERT INTO entries (cite_name, cite_type, title, author, institution, metanote, note, url, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
 		if err != nil {
-			return nil, err
-		}
-		for _, f := range [...]string{"author", "title", "note", "url", "year"} {
-			if _, ok := entry.Fields[f]; !ok {
-				entry.AddField(f, bibtex.NewBibConst("(TODO)"))
-			}
-		}
-		for _, f := range [...]string{"institution", "metanote"} {
-			if _, ok := entry.Fields[f]; !ok {
-				entry.AddField(f, bibtex.NewBibConst("(OPTIONAL)"))
-			}
+			log.Fatal(err)
 		}
 		res, err = stmt.Exec(entry.CiteName,
 			entry.Type,
-			entry.Fields["author"],
 			entry.Fields["title"],
+			entry.Fields["author"],
 			entry.Fields["institution"],
 			entry.Fields["metanote"],
 			entry.Fields["note"],
@@ -183,37 +228,90 @@ func writeToDB(db *sql.DB, entry *bibtex.BibEntry) (driver.Result, error) {
 			entry.Fields["year"],
 		)
 	case "techreport":
-		stmt, err := tx.Prepare("INSERT INTO entries (cite_name, cite_type, author, title, institution, metanote, series, url, version, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-		defer stmt.Close()
+		stmt, err = tx.Prepare("INSERT INTO entries (cite_name, cite_type, title, author, institution, metanote, series, url, version, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
 		if err != nil {
-			return nil, err
-		}
-		for _, f := range [...]string{"author", "title", "institution", "year"} {
-			if _, ok := entry.Fields[f]; !ok {
-				entry.AddField(f, bibtex.NewBibConst("(TODO)"))
-			}
-		}
-		for _, f := range [...]string{"metanote", "series", "url", "version"} {
-			if _, ok := entry.Fields[f]; !ok {
-				entry.AddField(f, bibtex.NewBibConst("(OPTIONAL)"))
-			}
+			log.Fatal(err)
 		}
 		res, err = stmt.Exec(entry.CiteName,
 			entry.Type,
-			entry.Fields["author"],
 			entry.Fields["title"],
+			entry.Fields["author"],
 			entry.Fields["institution"],
 			entry.Fields["metanote"],
-			entry.Fields["version"],
 			entry.Fields["series"],
 			entry.Fields["url"],
+			entry.Fields["version"],
 			entry.Fields["year"],
 		)
 	}
-	if err != nil {
-		return nil, err
+	return stmt, res, err
+}
+
+// newBibEntry create a new bibtex.BibEntry and return the pointer
+func newBibEntry(citeName, citeType, title, author, booktitle, doi, edition, keyword, location, isbn, issn, institution, journal, metanote, note, number, numpages, pages, publisher, series, techreportType, url, version, volume, year string) *bibtex.BibEntry {
+	entry := bibtex.NewBibEntry(citeType, citeName)
+	fieldMap := map[string]string{
+		"title":       title,
+		"author":      author,
+		"booktitle":   booktitle,
+		"doi":         doi,
+		"edition":     edition,
+		"keyword":     keyword,
+		"location":    location,
+		"isbn":        isbn,
+		"issn":        issn,
+		"institution": institution,
+		"journal":     journal,
+		"metanote":    metanote,
+		"note":        note,
+		"number":      number,
+		"numpages":    numpages,
+		"pages":       pages,
+		"publisher":   publisher,
+		"series":      series,
+		"type":        techreportType,
+		"url":         url,
+		"version":     version,
+		"volume":      volume,
+		"year":        year,
 	}
-	return res, nil
+	for k, v := range fieldMap {
+		if v != "" {
+			entry.AddField(k, bibtex.NewBibConst(v))
+		}
+	}
+	return entry
+}
+
+// updateBibTexEntryWithFilter replace the fields with (TODO) and (OPTIONAL)
+func updateBibTexEntryWithFilter(entry *bibtex.BibEntry, todos, optionals []string) {
+	for _, f := range [...]string{"author", "title", "journal", "year"} {
+		if _, ok := entry.Fields[f]; !ok {
+			entry.AddField(f, bibtex.NewBibConst("(TODO)"))
+		}
+	}
+	for _, f := range [...]string{"doi", "isbn", "issn", "keyword", "metanote", "number", "numpages", "pages", "publisher", "volume", "url"} {
+		if _, ok := entry.Fields[f]; !ok {
+			entry.AddField(f, bibtex.NewBibConst("(OPTIONAL)"))
+		}
+	}
+}
+
+// writeToDB write the BibEntry to the sqlite3 database
+func writeToDB(db *sql.DB, entry *bibtex.BibEntry) (*sql.Stmt, sql.Result, error) {
+	todos, options := getCitationTypeFilter(entry.Type)
+	for _, f := range todos {
+		if _, ok := entry.Fields[f]; !ok {
+			entry.AddField(f, bibtex.NewBibConst("(TODO)"))
+		}
+	}
+	for _, f := range options {
+		if _, ok := entry.Fields[f]; !ok {
+			entry.AddField(f, bibtex.NewBibConst("(OPTIONAL)"))
+		}
+	}
+	stmt, res, err := execInsertStatement(db, entry)
+	return stmt, res, err
 }
 
 func main() {
@@ -221,6 +319,7 @@ func main() {
 	noOption := flag.Bool("no-optional", false, "Suppress \"OPTIONAL\" fields in the resulting bibtex.")
 	noTodo := flag.Bool("no-todo", false, "Suppress \"TODO\" fields in the resulting bibtex.")
 	outFile := flag.String("out", "out.bib", "The resulting bibtex to write (it overrides if exists).")
+	verbose := flag.Bool("verbose", false, "Print verbose messages.")
 	version := flag.Bool("version", false, "Print version.")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s: [options] [.bib ... .bib]\n", os.Args[0])
@@ -293,9 +392,18 @@ func main() {
 
 		// inject each entry to the DB
 		for _, entry := range parsed.Entries {
-			if res, err := writeToDB(db, entry); err != nil {
-				log.Fatalf("[%s] DB writing failed: %s", entry.CiteName, err)
-			} else if res != nil {
+			stmt, res, err := writeToDB(db, entry)
+			if stmt != nil {
+				defer stmt.Close()
+			}
+			if err.Error() == "UNIQUE constraint failed: entries.cite_name" {
+				if *verbose {
+					log.Printf("[%s] %s", entry.CiteName, err)
+				}
+			} else if err != nil {
+				log.Fatalf("[%s] %s", entry.CiteName, err)
+			}
+			if res != nil {
 				log.Printf("Added %s", entry.CiteName)
 			}
 		}
@@ -304,17 +412,16 @@ func main() {
 
 	// create a new BibTex to print
 	bib := bibtex.NewBibTex()
-	rows, err := db.Query("SELECT * FROM entries ORDER BY cite_name ASC")
+	rows, err := db.Query("SELECT cite_name, cite_type, title, author, booktitle, doi, edition, keyword, location, isbn, issn, institution, journal, metanote, note, number, numpages, pages, publisher, series, type, url, version, volume, year FROM entries ORDER BY cite_name ASC")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var id int
 		var citeName string
 		var citeType string
-		var author string
 		var title string
+		var author string
 		var booktitle string
 		var doi string
 		var edition string
@@ -336,41 +443,11 @@ func main() {
 		var version string
 		var volume string
 		var year string
-		err = rows.Scan(&id, &citeName, &citeType, &author, &title, &booktitle, &doi, &edition, &keyword, &location, &isbn, &issn, &institution, &journal, &metanote, &note, &number, &numpages, &pages, &publisher, &series, &techreportType, &url, &version, &volume, &year)
+		err = rows.Scan(&citeName, &citeType, &title, &author, &booktitle, &doi, &edition, &keyword, &location, &isbn, &issn, &institution, &journal, &metanote, &note, &number, &numpages, &pages, &publisher, &series, &techreportType, &url, &version, &volume, &year)
 		if err != nil {
 			log.Fatal(err)
 		}
-		entry := bibtex.NewBibEntry(citeType, citeName)
-		fieldMap := map[string]string{
-			"author":      author,
-			"title":       title,
-			"booktitle":   booktitle,
-			"doi":         doi,
-			"edition":     edition,
-			"keyword":     keyword,
-			"location":    location,
-			"isbn":        isbn,
-			"issn":        issn,
-			"institution": institution,
-			"journal":     journal,
-			"metanote":    metanote,
-			"note":        note,
-			"number":      number,
-			"numpages":    numpages,
-			"pages":       pages,
-			"publisher":   publisher,
-			"series":      series,
-			"type":        techreportType,
-			"url":         url,
-			"version":     version,
-			"volume":      volume,
-			"year":        year,
-		}
-		for k, v := range fieldMap {
-			if v != "" {
-				entry.AddField(k, bibtex.NewBibConst(v))
-			}
-		}
+		entry := newBibEntry(citeName, citeType, title, author, booktitle, doi, edition, keyword, location, isbn, issn, institution, journal, metanote, note, number, numpages, pages, publisher, series, techreportType, url, version, volume, year)
 		bib.AddEntry(entry)
 		err = rows.Err()
 		if err != nil {
