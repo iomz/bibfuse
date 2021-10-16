@@ -1,0 +1,112 @@
+
+[article]
+todos = [
+	"author",
+	"title",
+	"journal",
+	"year"
+]
+optionals = [
+	"doi",
+	"isbn",
+	"issn",
+	"keyword",
+	"metanote",
+	"number",
+	"numpages",
+	"pages",
+	"publisher",
+	"volume",
+	"url"
+]
+
+[book]
+todos = [
+	"author",
+	"title",
+	"publisher",
+	"year"
+]
+optionals = [
+	"doi",
+	"edition",
+	"isbn",
+	"issn",
+	"metanote",
+	"url"
+]
+
+[incollection]
+todos = [
+	"author",
+	"title",
+	"booktitle",
+	"publisher",
+	"year"
+]
+optionals = [
+	"doi",
+	"keyword",
+	"isbn",
+	"issn",
+	"metanote",
+	"numpages",
+	"pages",
+	"url"
+]
+
+[inproceedings]
+todos = [
+	"author",
+	"title",
+	"booktitle",
+	"year"
+]
+optionals = [
+	"doi",
+	"isbn",
+	"issn",
+	"keyword",
+	"location",
+	"metanote",
+	"numpages",
+	"pages",
+	"publisher",
+	"series",
+	"url",
+	"year"
+]
+
+[misc]
+todos = [
+	"author",
+	"title",
+	"note",
+	"url",
+	"year"
+]
+optionals = [
+	"institution",
+	"metanote"
+]
+
+[techreport]
+todos = [
+	"author",
+	"title",
+	"institution",
+	"year"
+]
+optionals = [
+	"metanote",
+	"series",
+	"url",
+	"version"
+]
+
+[default]
+todos = [
+	"title"
+]
+optionals = [
+]
