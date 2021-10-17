@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"runtime/debug"
 	"strings"
 
@@ -33,12 +34,12 @@ func createDB(dbPath string) (*sql.DB, error) {
             booktitle TEXT DEFAULT "",
             doi TEXT DEFAULT "",
             edition TEXT DEFAULT "",
-            keyword TEXT DEFAULT "",
-            location TEXT DEFAULT "",
             isbn TEXT DEFAULT "",
             issn TEXT DEFAULT "",
             institution TEXT DEFAULT "",
             journal TEXT DEFAULT "",
+            keyword TEXT DEFAULT "",
+            location TEXT DEFAULT "",
             metanote TEXT DEFAULT "",
             note TEXT DEFAULT "",
             number TEXT DEFAULT "",
@@ -57,7 +58,7 @@ func createDB(dbPath string) (*sql.DB, error) {
 }
 
 // writeToDB write the BibEntry to the sqlite3 database
-func writeToDB(db *sql.DB, entry *bibtex.BibEntry) (*sql.Stmt, sql.Result, error) {
+func writeToDB(db *sql.DB, bi bibfuse.BibItem) (*sql.Stmt, sql.Result, error) {
 	var stmt *sql.Stmt
 	var res sql.Result
 
@@ -67,126 +68,12 @@ func writeToDB(db *sql.DB, entry *bibtex.BibEntry) (*sql.Stmt, sql.Result, error
 	}
 	defer tx.Commit()
 
-	switch entry.Type {
-	case "article":
-		stmt, err = tx.Prepare("INSERT INTO entries (cite_name, cite_type, title, author, doi, isbn, issn, journal, keyword, metanote, number, numpages, pages, publisher, url, volume, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-		if err != nil {
-			log.Fatal(err)
-		}
-		res, err = stmt.Exec(entry.CiteName,
-			entry.Type,
-			entry.Fields["title"],
-			entry.Fields["author"],
-			entry.Fields["doi"],
-			entry.Fields["isbn"],
-			entry.Fields["issn"],
-			entry.Fields["journal"],
-			entry.Fields["keyword"],
-			entry.Fields["metanote"],
-			entry.Fields["number"],
-			entry.Fields["numpages"],
-			entry.Fields["pages"],
-			entry.Fields["publisher"],
-			entry.Fields["url"],
-			entry.Fields["volume"],
-			entry.Fields["year"],
-		)
-	case "book":
-		stmt, err = tx.Prepare("INSERT INTO entries (cite_name, cite_type, title, author, doi, edition, isbn, issn, metanote, publisher, url, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-		if err != nil {
-			log.Fatal(err)
-		}
-		res, err = stmt.Exec(entry.CiteName,
-			entry.Type,
-			entry.Fields["title"],
-			entry.Fields["author"],
-			entry.Fields["doi"],
-			entry.Fields["edition"],
-			entry.Fields["isbn"],
-			entry.Fields["issn"],
-			entry.Fields["metanote"],
-			entry.Fields["publisher"],
-			entry.Fields["url"],
-			entry.Fields["year"],
-		)
-	case "incollection":
-		stmt, err = tx.Prepare("INSERT INTO entries (cite_name, cite_type, title, author, booktitle, doi, isbn, issn, keyword, metanote, numpages, pages, publisher, url, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-		if err != nil {
-			log.Fatal(err)
-		}
-		res, err = stmt.Exec(entry.CiteName,
-			entry.Type,
-			entry.Fields["title"],
-			entry.Fields["author"],
-			entry.Fields["booktitle"],
-			entry.Fields["doi"],
-			entry.Fields["isbn"],
-			entry.Fields["issn"],
-			entry.Fields["keyword"],
-			entry.Fields["metanote"],
-			entry.Fields["numpages"],
-			entry.Fields["pages"],
-			entry.Fields["publisher"],
-			entry.Fields["url"],
-			entry.Fields["year"],
-		)
-	case "inproceedings":
-		stmt, err = tx.Prepare("INSERT INTO entries (cite_name, cite_type, title, author, booktitle, doi, isbn, issn, keyword, location, metanote, numpages, pages, publisher, series, url, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-		if err != nil {
-			log.Fatal(err)
-		}
-		res, err = stmt.Exec(entry.CiteName,
-			entry.Type,
-			entry.Fields["title"],
-			entry.Fields["author"],
-			entry.Fields["booktitle"],
-			entry.Fields["doi"],
-			entry.Fields["isbn"],
-			entry.Fields["issn"],
-			entry.Fields["keyword"],
-			entry.Fields["location"],
-			entry.Fields["metanote"],
-			entry.Fields["numpages"],
-			entry.Fields["pages"],
-			entry.Fields["publisher"],
-			entry.Fields["series"],
-			entry.Fields["url"],
-			entry.Fields["year"],
-		)
-	case "misc":
-		stmt, err = tx.Prepare("INSERT INTO entries (cite_name, cite_type, title, author, institution, metanote, note, url, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-		if err != nil {
-			log.Fatal(err)
-		}
-		res, err = stmt.Exec(entry.CiteName,
-			entry.Type,
-			entry.Fields["title"],
-			entry.Fields["author"],
-			entry.Fields["institution"],
-			entry.Fields["metanote"],
-			entry.Fields["note"],
-			entry.Fields["url"],
-			entry.Fields["year"],
-		)
-	case "techreport":
-		stmt, err = tx.Prepare("INSERT INTO entries (cite_name, cite_type, title, author, institution, metanote, series, url, version, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-		if err != nil {
-			log.Fatal(err)
-		}
-		res, err = stmt.Exec(entry.CiteName,
-			entry.Type,
-			entry.Fields["title"],
-			entry.Fields["author"],
-			entry.Fields["institution"],
-			entry.Fields["metanote"],
-			entry.Fields["series"],
-			entry.Fields["url"],
-			entry.Fields["version"],
-			entry.Fields["year"],
-		)
+	stmt, err = tx.Prepare("INSERT INTO entries (cite_name, cite_type, title, author, booktitle, doi, edition, isbn, issn, institution, journal, keyword, location, metanote, note, number, numpages, pages, publisher, series, url, type, volume, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+	if err != nil {
+		log.Fatal(err)
 	}
-	return stmt, res, err
-
+	res, err = stmt.Exec(bi.CiteName, bi.CiteType, bi.Title, bi.Author,
+		bi.Booktitle, bi.DOI, bi.Edition, bi.ISBN, bi.ISSN, bi.Institution, bi.Journal, bi.Keyword, bi.Location, bi.Metanote, bi.Note, bi.Number, bi.Numpages, bi.Pages, bi.Publisher, bi.Series, bi.URL, bi.TechreportType, bi.Volume, bi.Year)
 	return stmt, res, err
 }
 
@@ -196,6 +83,7 @@ func main() {
 	noOption := flag.Bool("no-optional", false, "Suppress \"OPTIONAL\" fields in the resulting bibtex.")
 	noTodo := flag.Bool("no-todo", false, "Suppress \"TODO\" fields in the resulting bibtex.")
 	outFile := flag.String("out", "out.bib", "The resulting bibtex to write (it overrides if exists).")
+	showEmpty := flag.Bool("show-empty", false, "Suppress empty fields in the resulting bibtex.")
 	verbose := flag.Bool("verbose", false, "Print verbose messages.")
 	version := flag.Bool("version", false, "Print version.")
 	flag.Usage = func() {
@@ -221,9 +109,15 @@ func main() {
 		viper.SetConfigFile(configPath)
 	} else {
 		viper.SetConfigName("bibfuse")
-		cwd, _ := os.Getwd()
-		viper.AddConfigPath(cwd)
+		viper.AddConfigPath(".")
+		// add the path to the default config
+		_, filename, _, ok := runtime.Caller(0)
+		if !ok {
+			panic("No caller information")
+		}
+		viper.AddConfigPath(filepath.Join(filepath.Dir(filename), "../../"))
 	}
+
 	// read the config file
 	if err := viper.ReadInConfig(); err != nil { // handle errors reading the config file
 		log.Fatalf("Fatal error config file: %s \n", err)
@@ -249,6 +143,7 @@ func main() {
 	}
 
 	// iterate the given files
+	newItemCount := 0
 	for _, f := range files {
 		filePath := filepath.Join(".", f)
 		log.Printf("Parsing %v", filePath)
@@ -264,8 +159,8 @@ func main() {
 
 		// inject each entry to the DB
 		for _, entry := range parsed.Entries {
-			filters.Update(entry)
-			stmt, res, err := writeToDB(db, entry)
+			bi := filters.ConvertFromBibEntryToBibItem(entry)
+			stmt, res, err := writeToDB(db, bi)
 			if stmt != nil {
 				defer stmt.Close()
 			}
@@ -279,22 +174,25 @@ func main() {
 				}
 			}
 			if res != nil {
-				log.Printf("Added %s", entry.CiteName)
+				newItemCount++
+				if *verbose {
+					log.Printf("Added %s", entry.CiteName)
+				}
 			}
 		}
-
 	}
+	log.Printf("+%v new entries", newItemCount)
 
 	// create a new BibTex to print
 	bib := bibtex.NewBibTex()
-	rows, err := db.Query("SELECT cite_name, cite_type, title, author, booktitle, doi, edition, keyword, location, isbn, issn, institution, journal, metanote, note, number, numpages, pages, publisher, series, type, url, version, volume, year FROM entries ORDER BY cite_name ASC")
+	rows, err := db.Query("SELECT cite_name, cite_type, title, author, booktitle, doi, edition, isbn, issn, institution, journal, keyword, location, metanote, note, number, numpages, pages, publisher, series, type, url, version, volume, year FROM entries ORDER BY cite_name ASC")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var row bibfuse.BibItem
-		err = rows.Scan(&row.CiteName, &row.CiteType, &row.Title, &row.Author, &row.Booktitle, &row.DOI, &row.Edition, &row.Keyword, &row.Location, &row.ISBN, &row.ISSN, &row.Institution, &row.Journal, &row.Metanote, &row.Note, &row.Number, &row.Numpages, &row.Pages, &row.Publisher, &row.Series, &row.TechreportType, &row.URL, &row.Version, &row.Volume, &row.Year)
+		row := bibfuse.NewBibItem()
+		err = rows.Scan(&row.CiteName, &row.CiteType, &row.Title, &row.Author, &row.Booktitle, &row.DOI, &row.Edition, &row.ISBN, &row.ISSN, &row.Institution, &row.Journal, &row.Keyword, &row.Location, &row.Metanote, &row.Note, &row.Number, &row.Numpages, &row.Pages, &row.Publisher, &row.Series, &row.TechreportType, &row.URL, &row.Version, &row.Volume, &row.Year)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -305,6 +203,7 @@ func main() {
 			log.Fatal(err)
 		}
 	}
+	log.Printf("%v contains %v entries", dbPath, len(bib.Entries))
 
 	// leave out (OPTIONAL) and (TODO) if the options are given
 	outString := bib.PrettyString()
@@ -314,6 +213,10 @@ func main() {
 	}
 	if *noTodo {
 		re := regexp.MustCompile("(?m)[\r\n]+^.*(TODO).*$")
+		outString = re.ReplaceAllString(outString, "")
+	}
+	if !*showEmpty {
+		re := regexp.MustCompile("(?m)[\r\n]+^.*\"\".*$")
 		outString = re.ReplaceAllString(outString, "")
 	}
 

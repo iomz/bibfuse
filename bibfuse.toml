@@ -16,8 +16,8 @@ optionals = [
 	"numpages",
 	"pages",
 	"publisher",
-	"volume",
-	"url"
+	"url",
+	"volume"
 ]
 
 [book]

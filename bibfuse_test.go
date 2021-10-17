@@ -3,12 +3,34 @@ package bibfuse
 import (
 	"bufio"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/nickng/bibtex"
 	"github.com/spf13/viper"
 )
+
+var itemtests = []struct {
+	in  BibItem
+	opt BibItemOption
+	out map[string]string
+}{
+	{
+		BibItem{"mizutani2021article", "article", "{Title of the Article}", "Mizutani, Iori", "", "(OPTIONAL)", "", "(OPTIONAL)", "(OPTIONAL)", "", "(TODO)", "(OPTIONAL)", "", "(OPTIONAL)", "", "(OPTIONAL)", "(OPTIONAL)", "(OPTIONAL)", "(OPTIONAL)", "", "", "(OPTIONAL)", "", "(OPTIONAL)", "2021"},
+		ByBibTexName,
+		map[string]string{"author": "Mizutani, Iori", "booktitle": "", "cite_name": "mizutani2021article", "cite_type": "article", "doi": "(OPTIONAL)", "edition": "", "institution": "", "isbn": "(OPTIONAL)", "issn": "(OPTIONAL)", "journal": "(TODO)", "keyword": "(OPTIONAL)", "location": "", "metanote": "(OPTIONAL)", "note": "", "number": "(OPTIONAL)", "numpages": "(OPTIONAL)", "pages": "(OPTIONAL)", "publisher": "(OPTIONAL)", "series": "", "title": "{Title of the Article}", "type": "", "url": "(OPTIONAL)", "version": "", "volume": "(OPTIONAL)", "year": "2021"},
+	},
+}
+
+func TestAllFields(t *testing.T) {
+	for _, tt := range itemtests {
+		result := tt.in.AllFields(tt.opt)
+		if !reflect.DeepEqual(result, tt.out) {
+			t.Errorf("BibItem.AllFields(%v) => \n%v, want \n%v", tt.opt, result, tt.out)
+		}
+	}
+}
 
 var bibtests = []struct {
 	in  string
@@ -17,74 +39,113 @@ var bibtests = []struct {
 	{
 		"@article{mizutani2021article,\ntitle={{Title of the Article}},\nauthor=\"Mizutani, Iori\",\n}",
 		`@article{mizutani2021article,
-    title     = {{Title of the Article}},
-    author    = "Mizutani, Iori",
-    url       = "(OPTIONAL)",
-    doi       = "(OPTIONAL)",
-    isbn      = "(OPTIONAL)",
-    issn      = "(OPTIONAL)",
-    journal   = "(TODO)",
-    keyword   = "(OPTIONAL)",
-    metanote  = "(OPTIONAL)",
-    number    = "(OPTIONAL)",
-    numpages  = "(OPTIONAL)",
-    pages     = "(OPTIONAL)",
-    publisher = "(OPTIONAL)",
-    volume    = "(OPTIONAL)",
-    year      = "(TODO)",
+    title       = {{Title of the Article}},
+    author      = "Mizutani, Iori",
+    url         = "(OPTIONAL)",
+    booktitle   = "",
+    doi         = "(OPTIONAL)",
+    edition     = "",
+    institution = "",
+    isbn        = "(OPTIONAL)",
+    issn        = "(OPTIONAL)",
+    journal     = "(TODO)",
+    keyword     = "(OPTIONAL)",
+    location    = "",
+    metanote    = "(OPTIONAL)",
+    note        = "",
+    number      = "(OPTIONAL)",
+    numpages    = "(OPTIONAL)",
+    pages       = "(OPTIONAL)",
+    publisher   = "(OPTIONAL)",
+    series      = "",
+    type        = "",
+    version     = "",
+    volume      = "(OPTIONAL)",
+    year        = "(TODO)",
 }
 `,
 	}, {
 		"@book{mizutani2021book,\ntitle={{Title of the Book}},\nauthor=\"Mizutani, Iori\",\n}",
 		`@book{mizutani2021book,
-    title     = {{Title of the Book}},
-    author    = "Mizutani, Iori",
-    url       = "(OPTIONAL)",
-    doi       = "(OPTIONAL)",
-    edition   = "(OPTIONAL)",
-    isbn      = "(OPTIONAL)",
-    issn      = "(OPTIONAL)",
-    metanote  = "(OPTIONAL)",
-    publisher = "(TODO)",
-    year      = "(TODO)",
+    title       = {{Title of the Book}},
+    author      = "Mizutani, Iori",
+    url         = "(OPTIONAL)",
+    booktitle   = "",
+    doi         = "(OPTIONAL)",
+    edition     = "(OPTIONAL)",
+    institution = "",
+    isbn        = "(OPTIONAL)",
+    issn        = "(OPTIONAL)",
+    journal     = "",
+    keyword     = "",
+    location    = "",
+    metanote    = "(OPTIONAL)",
+    note        = "",
+    number      = "",
+    numpages    = "",
+    pages       = "",
+    publisher   = "(TODO)",
+    series      = "",
+    type        = "",
+    version     = "",
+    volume      = "",
+    year        = "(TODO)",
 }
 `,
 	}, {
 		"@incollection{mizutani2021incollection,\ntitle={{Title of the Book Chapter}},\nauthor=\"Mizutani, Iori\",\n}",
 		`@incollection{mizutani2021incollection,
-    title     = {{Title of the Book Chapter}},
-    author    = "Mizutani, Iori",
-    url       = "(OPTIONAL)",
-    booktitle = "(TODO)",
-    doi       = "(OPTIONAL)",
-    isbn      = "(OPTIONAL)",
-    issn      = "(OPTIONAL)",
-    keyword   = "(OPTIONAL)",
-    metanote  = "(OPTIONAL)",
-    numpages  = "(OPTIONAL)",
-    pages     = "(OPTIONAL)",
-    publisher = "(TODO)",
-    year      = "(TODO)",
+    title       = {{Title of the Book Chapter}},
+    author      = "Mizutani, Iori",
+    url         = "(OPTIONAL)",
+    booktitle   = "(TODO)",
+    doi         = "(OPTIONAL)",
+    edition     = "",
+    institution = "",
+    isbn        = "(OPTIONAL)",
+    issn        = "(OPTIONAL)",
+    journal     = "",
+    keyword     = "(OPTIONAL)",
+    location    = "",
+    metanote    = "(OPTIONAL)",
+    note        = "",
+    number      = "",
+    numpages    = "(OPTIONAL)",
+    pages       = "(OPTIONAL)",
+    publisher   = "(TODO)",
+    series      = "",
+    type        = "",
+    version     = "",
+    volume      = "",
+    year        = "(TODO)",
 }
 `,
 	}, {
 		"@inproceedings{mizutani2021inproceedings,\ntitle={{Title of the Conference Paper}},\nauthor=\"Mizutani, Iori\",\n}",
 		`@inproceedings{mizutani2021inproceedings,
-    title     = {{Title of the Conference Paper}},
-    author    = "Mizutani, Iori",
-    url       = "(OPTIONAL)",
-    booktitle = "(TODO)",
-    doi       = "(OPTIONAL)",
-    isbn      = "(OPTIONAL)",
-    issn      = "(OPTIONAL)",
-    keyword   = "(OPTIONAL)",
-    location  = "(OPTIONAL)",
-    metanote  = "(OPTIONAL)",
-    numpages  = "(OPTIONAL)",
-    pages     = "(OPTIONAL)",
-    publisher = "(OPTIONAL)",
-    series    = "(OPTIONAL)",
-    year      = "(TODO)",
+    title       = {{Title of the Conference Paper}},
+    author      = "Mizutani, Iori",
+    url         = "(OPTIONAL)",
+    booktitle   = "(TODO)",
+    doi         = "(OPTIONAL)",
+    edition     = "",
+    institution = "",
+    isbn        = "(OPTIONAL)",
+    issn        = "(OPTIONAL)",
+    journal     = "",
+    keyword     = "(OPTIONAL)",
+    location    = "(OPTIONAL)",
+    metanote    = "(OPTIONAL)",
+    note        = "",
+    number      = "",
+    numpages    = "(OPTIONAL)",
+    pages       = "(OPTIONAL)",
+    publisher   = "(OPTIONAL)",
+    series      = "(OPTIONAL)",
+    type        = "",
+    version     = "",
+    volume      = "",
+    year        = "(TODO)",
 }
 `,
 	}, {
@@ -93,9 +154,25 @@ var bibtests = []struct {
     title       = {{Title of the Resource}},
     author      = "Mizutani, Iori",
     url         = "(TODO)",
+    booktitle   = "",
+    doi         = "",
+    edition     = "",
     institution = "(OPTIONAL)",
+    isbn        = "",
+    issn        = "",
+    journal     = "",
+    keyword     = "",
+    location    = "",
     metanote    = "(OPTIONAL)",
     note        = "(TODO)",
+    number      = "",
+    numpages    = "",
+    pages       = "",
+    publisher   = "",
+    series      = "",
+    type        = "",
+    version     = "",
+    volume      = "",
     year        = "(TODO)",
 }
 `,
@@ -105,33 +182,150 @@ var bibtests = []struct {
     title       = {{Title of the Technical Document}},
     author      = "Mizutani, Iori",
     url         = "(OPTIONAL)",
+    booktitle   = "",
+    doi         = "",
+    edition     = "",
     institution = "(TODO)",
+    isbn        = "",
+    issn        = "",
+    journal     = "",
+    keyword     = "",
+    location    = "",
     metanote    = "(OPTIONAL)",
+    note        = "",
+    number      = "",
+    numpages    = "",
+    pages       = "",
+    publisher   = "",
     series      = "(OPTIONAL)",
+    type        = "",
     version     = "(OPTIONAL)",
+    volume      = "",
     year        = "(TODO)",
 }
 `,
 	},
 }
 
-// BibEntryEqual compares 2 bib entries
-func BibEntryEqual(t *testing.T, from, to string) bool {
+func TestFiltersUpdate(t *testing.T) {
+	filters := loadConfig(t)
+	for _, tt := range bibtests {
+		parsed, err := bibtex.Parse(strings.NewReader(tt.in))
+		if err != nil {
+			t.Error(err)
+		}
+		entry := parsed.Entries[0]
+		bi := filters.ConvertFromBibEntryToBibItem(entry)
+		entry = bi.ToBibEntry()
+		bt := bibtex.NewBibTex()
+		bt.AddEntry(entry)
+		result := bt.PrettyString()
+		if result != tt.out {
+			t.Errorf("bt.PrettyString() => \n%v, want \n%v", result, tt.out)
+			bibEntryEqual(t, tt.out, result)
+		}
+	}
+}
+
+func TestNewBibItem(t *testing.T) {
+	bi := NewBibItem()
+	for k, v := range bi.AllFields(ByFieldName) {
+		if v != "" {
+			t.Errorf("BibItem.%v => %v, want %v", k, v, "")
+		}
+	}
+}
+
+var fieldtests = []struct {
+	in   BibItem
+	args map[string]string
+	out  BibItem
+	err  error
+}{
+	{
+		NewBibItem(),
+		map[string]string{"name": "title", "value": "Title"},
+		BibItem{"", "", "Title", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""},
+		nil,
+	},
+}
+
+func TestSetFieldByBibTexName(t *testing.T) {
+	for _, tt := range fieldtests {
+		err := tt.in.SetFieldByBibTexName(tt.args["name"], tt.args["value"])
+		if err != tt.err {
+			t.Errorf("err => \n%v, want \n%v", err, tt.err)
+		} else if !reflect.DeepEqual(tt.in, tt.out) {
+			t.Errorf("BibItem => \n%v, want \n%v", tt.in, tt.out)
+		}
+	}
+}
+
+var bibitemtests = []struct {
+	in  BibItem
+	out string
+}{
+	{
+		BibItem{"mizutani2021article", "article", "{Title of the Article}", "Mizutani, Iori", "", "(OPTIONAL)", "", "(OPTIONAL)", "(OPTIONAL)", "", "(TODO)", "(OPTIONAL)", "", "(OPTIONAL)", "", "(OPTIONAL)", "(OPTIONAL)", "(OPTIONAL)", "(OPTIONAL)", "", "", "(OPTIONAL)", "", "(OPTIONAL)", "2021"},
+		`@article{mizutani2021article,
+    title       = {{Title of the Article}},
+    author      = "Mizutani, Iori",
+    url         = "(OPTIONAL)",
+    booktitle   = "",
+    doi         = "(OPTIONAL)",
+    edition     = "",
+    institution = "",
+    isbn        = "(OPTIONAL)",
+    issn        = "(OPTIONAL)",
+    journal     = "(TODO)",
+    keyword     = "(OPTIONAL)",
+    location    = "",
+    metanote    = "(OPTIONAL)",
+    note        = "",
+    number      = "(OPTIONAL)",
+    numpages    = "(OPTIONAL)",
+    pages       = "(OPTIONAL)",
+    publisher   = "(OPTIONAL)",
+    series      = "",
+    type        = "",
+    version     = "",
+    volume      = "(OPTIONAL)",
+    year        = 2021,
+}
+`,
+	},
+}
+
+func TestToBibEntry(t *testing.T) {
+	for _, tt := range bibitemtests {
+		entry := tt.in.ToBibEntry()
+		bt := bibtex.NewBibTex()
+		bt.AddEntry(entry)
+		result := bt.PrettyString()
+		if result != tt.out {
+			t.Errorf("bt.PrettyString => \n%v, want \n%v", result, tt.out)
+		}
+	}
+}
+
+// bibEntryEqual compares 2 bib entries
+func bibEntryEqual(t *testing.T, from, to string) bool {
 	fromScanner := bufio.NewScanner(strings.NewReader(from))
 	toScanner := bufio.NewScanner(strings.NewReader(to))
 	for fromScanner.Scan() || toScanner.Scan() {
 		from := fromScanner.Text()
 		to := toScanner.Text()
-		t.Logf("%v\n%v", from, to)
+		//t.Logf("%v\n%v", from, to)
 		if from != to {
-			t.Errorf("%v\nmust be\n%v", from, to)
+			//t.Errorf("%v\nmust be\n%v", from, to)
 			return false
 		}
 	}
 	return true
 }
 
-func TestFiltersUpdate(t *testing.T) {
+// generateFilters loads up the default filters
+func loadConfig(t *testing.T) Filters {
 	cwd, _ := os.Getwd()
 	viper.SetConfigName("bibfuse")
 	viper.AddConfigPath(cwd)
@@ -150,19 +344,5 @@ func TestFiltersUpdate(t *testing.T) {
 		filters[citeType][filterType] = viper.GetStringSlice(key)
 	}
 
-	for _, tt := range bibtests {
-		parsed, err := bibtex.Parse(strings.NewReader(tt.in))
-		if err != nil {
-			t.Error(err)
-		}
-		entry := parsed.Entries[0]
-		filters.Update(entry)
-		bt := bibtex.NewBibTex()
-		bt.AddEntry(entry)
-		result := bt.PrettyString()
-		if result != tt.out {
-			t.Errorf("BibEntryTemplate => \n%v, want \n%v", result, tt.out)
-			BibEntryEqual(t, tt.out, result)
-		}
-	}
+	return filters
 }
