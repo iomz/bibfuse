@@ -114,14 +114,14 @@ func main() {
 		// add the path to the default config
 		_, filename, _, ok := runtime.Caller(0)
 		if !ok {
-			panic("No caller information")
+			panic("no caller information")
 		}
 		viper.AddConfigPath(filepath.Join(filepath.Dir(filename), "../../"))
 	}
 
 	// read the config file
 	if err := viper.ReadInConfig(); err != nil { // handle errors reading the config file
-		log.Fatalf("Fatal error config file: %s \n", err)
+		log.Fatalf("config: %s \n", err)
 	}
 
 	// load the filters
@@ -140,14 +140,14 @@ func main() {
 	db, err := createDB(dbPath)
 	defer db.Close()
 	if err != nil {
-		log.Fatalf("Table creation failed: %q", err)
+		log.Fatalf("table creation failed: %q", err)
 	}
 
 	// iterate the given files
 	newItemCount := 0
 	for _, f := range files {
 		filePath := filepath.Join(".", f)
-		log.Printf("Parsing %v", filePath)
+		log.Printf("parsing %v", filePath)
 		reader, err := os.Open(filePath)
 		if err != nil {
 			log.Fatal(err)
@@ -177,7 +177,7 @@ func main() {
 			if res != nil {
 				newItemCount++
 				if *verbose {
-					log.Printf("Added %s", entry.CiteName)
+					log.Printf("added %s", entry.CiteName)
 				}
 			}
 		}
@@ -229,4 +229,5 @@ func main() {
 	}
 	defer writer.Close()
 	fmt.Fprintf(writer, outString)
+	log.Printf("%v entries written to %v", len(bib.Entries), outPath)
 }

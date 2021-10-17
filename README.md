@@ -37,30 +37,58 @@ Usage of bibfuse: [options] [.bib ... .bib]
 This tool takes `.bib` files and filter fields for each entry depending on the type: article, book, inproceedings, misc, and techreport.
 The mandatory fields are filled with `(TODO)` and optional fileds are filled with `(OPTIONAL)` by default.
 
+## Install
+
 ```console
 % go get -u github.com/iomz/bibfuse
+```
+
+## Usage
+
+```console
 % cat ref.bib
 @article{someone2021a,
     title     = {{A Journal Article}},
 }
-% bibfuse -in ref.bib
+% bibfuse ref.bib
+2021/10/17 15:47:32 parsing ref.bib
+2021/10/17 15:47:32 +1 new entries
+2021/10/17 15:47:32 bib.db contains 1 entries
+2021/10/17 15:47:32 1 entries written to out.bib
+% cat out.bib
+@article{someone2021a,
+    title       = {{A Journal Article}},
+    author      = "(TODO)",
+    url         = "(OPTIONAL)",
+    doi         = "(OPTIONAL)",
+    isbn        = "(OPTIONAL)",
+    issn        = "(OPTIONAL)",
+    journal     = "(TODO)",
+    keyword     = "(OPTIONAL)",
+    metanote    = "(OPTIONAL)",
+    number      = "(OPTIONAL)",
+    numpages    = "(OPTIONAL)",
+    pages       = "(OPTIONAL)",
+    publisher   = "(OPTIONAL)",
+    volume      = "(OPTIONAL)",
+    year        = "(TODO)",
+}
+```
+
+## Usage with Docker
+
+```console
+% cat ref.bib
 @article{someone2021a,
     title     = {{A Journal Article}},
-    author    = "(TODO)",
-    journal   = "(TODO)",
-    year      = "(TODO)",
-    url       = "(OPTIONAL)",
-    doi       = "(OPTIONAL)",
-    isbn      = "(OPTIONAL)",
-    issn      = "(OPTIONAL)",
-    keyword   = "(OPTIONAL)",
-    metanote  = "(OPTIONAL)",
-    number    = "(OPTIONAL)",
-    numpages  = "(OPTIONAL)",
-    pages     = "(OPTIONAL)",
-    publisher = "(OPTIONAL)",
-    volume    = "(OPTIONAL)",
 }
+% docker run -v $(pwd):$(pwd) -w $(pwd) --rm iomz/bibfuse ref.bib
+2021/10/17 13:53:33 parsing ref.bib
+2021/10/17 13:53:33 +0 new entries
+2021/10/17 13:53:33 bib.db contains 1 entries
+2021/10/17 13:53:33 1 entries written to out.bib
+% sqlite3 bib.db "SELECT * FROM entries;"
+1|someone2021a|article|(TODO)|{A Journal Article}||(OPTIONAL)||(OPTIONAL)|(OPTIONAL)||(TODO)|(OPTIONAL)||(OPTIONAL)||(OPTIONAL)|(OPTIONAL)|(OPTIONAL)|(OPTIONAL)||||(OPTIONAL)||(OPTIONAL)|(TODO)
 ```
 
 # BibTex entry format
