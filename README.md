@@ -40,7 +40,7 @@ Usage of bibfuse: [options] [.bib ... .bib]
 
 ## Install
 ```console
-% go get -u github.com/iomz/bibfuse
+% go get -u github.com/iomz/bibfuse/...
 ```
 
 ## Usage
