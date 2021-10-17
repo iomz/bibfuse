@@ -240,10 +240,14 @@ Aiming for the compatibility with most of the research publication requirements.
 }
 ```
 
-# Author
+# Contribution
 
-Iori Mizutani ([@iomz](https://github.com/iomz))
+See `CONTRIBUTING.md`.
 
 # License
 
 See `LICENSE`.
+
+# Author
+
+Iori Mizutani ([@iomz](https://github.com/iomz))
