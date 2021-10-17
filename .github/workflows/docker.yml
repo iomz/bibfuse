@@ -22,14 +22,13 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Docker meta
         id: meta
-        #env:
-        #  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         uses: docker/metadata-action@v3
         with:
           images: iomz/bibfuse
           # generate Docker tags based on the following events/attributes
           tags: |
             type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=sha
       - name: Build and push

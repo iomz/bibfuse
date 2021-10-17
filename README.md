@@ -1,6 +1,7 @@
 bibfuse
 =======
-[![Build Status](https://github.com/iomz/bibfuse/actions/workflows/test.yml/badge.svg)](https://github.com/iomz/bibfuse/actions)
+[![Test](https://github.com/iomz/bibfuse/actions/workflows/test.yml/badge.svg)](https://github.com/iomz/bibfuse/actions/workflows/test.yml)
+[![Docker](https://github.com/iomz/bibfuse/actions/workflows/docker.yml/badge.svg)](https://github.com/iomz/bibfuse/actions/workflows/docker.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/iomz/bibfuse)](https://goreportcard.com/report/github.com/iomz/bibfuse)
 [![codecov](https://codecov.io/gh/iomz/bibfuse/branch/main/graph/badge.svg?token=fN1tyc6ssX)](https://codecov.io/gh/iomz/bibfuse)
 
