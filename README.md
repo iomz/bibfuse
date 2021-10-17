@@ -1,8 +1,11 @@
 bibfuse
 =======
-[![Build Status](https://github.com/iomz/bibfuse/actions/workflows/test.yml/badge.svg)](https://github.com/iomz/bibfuse/actions)
+[![Test](https://github.com/iomz/bibfuse/actions/workflows/test.yml/badge.svg)](https://github.com/iomz/bibfuse/actions/workflows/test.yml)
+[![Docker](https://github.com/iomz/bibfuse/actions/workflows/docker.yml/badge.svg)](https://github.com/iomz/bibfuse/actions/workflows/docker.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/iomz/bibfuse)](https://goreportcard.com/report/github.com/iomz/bibfuse)
 [![codecov](https://codecov.io/gh/iomz/bibfuse/branch/main/graph/badge.svg?token=fN1tyc6ssX)](https://codecov.io/gh/iomz/bibfuse)
+[![License](https://img.shields.io/github/license/iomz/bibfuse.svg)](https://github.com/iomz/bibfuse/blob/main/LICENSE)
+[![GoDoc](https://godoc.org/github.com/iomz/bibfuse?status.svg)](https://godoc.org/github.com/iomz/bibfuse)
 
 A CLI tool to manage bibtex entries using [nickng/bibtex](https://github.com/nickng/bibtex).
 
@@ -239,10 +242,14 @@ Aiming for the compatibility with most of the research publication requirements.
 }
 ```
 
-# Author
+# Contribution
 
-Iori Mizutani ([@iomz](https://github.com/iomz))
+See `CONTRIBUTING.md`.
 
 # License
 
 See `LICENSE`.
+
+# Author
+
+Iori Mizutani ([@iomz](https://github.com/iomz))
