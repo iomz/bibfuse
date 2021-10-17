@@ -46,6 +46,7 @@ func createDB(dbPath string) (*sql.DB, error) {
             numpages TEXT DEFAULT "",
             pages TEXT DEFAULT "",
             publisher TEXT DEFAULT "",
+            school TEXT DEFAULT "",
             series TEXT DEFAULT "",
             type TEXT DEFAULT "",
             url TEXT DEFAULT "",
@@ -68,17 +69,17 @@ func writeToDB(db *sql.DB, bi bibfuse.BibItem) (*sql.Stmt, sql.Result, error) {
 	}
 	defer tx.Commit()
 
-	stmt, err = tx.Prepare("INSERT INTO entries (cite_name, cite_type, title, author, booktitle, doi, edition, isbn, issn, institution, journal, keyword, location, metanote, note, number, numpages, pages, publisher, series, url, type, volume, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+	stmt, err = tx.Prepare("INSERT INTO entries (cite_name, cite_type, title, author, booktitle, doi, edition, isbn, issn, institution, journal, keyword, location, metanote, note, number, numpages, pages, publisher, school, series, url, type, volume, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
 	if err != nil {
 		log.Fatal(err)
 	}
 	res, err = stmt.Exec(bi.CiteName, bi.CiteType, bi.Title, bi.Author,
-		bi.Booktitle, bi.DOI, bi.Edition, bi.ISBN, bi.ISSN, bi.Institution, bi.Journal, bi.Keyword, bi.Location, bi.Metanote, bi.Note, bi.Number, bi.Numpages, bi.Pages, bi.Publisher, bi.Series, bi.URL, bi.TechreportType, bi.Volume, bi.Year)
+		bi.Booktitle, bi.DOI, bi.Edition, bi.ISBN, bi.ISSN, bi.Institution, bi.Journal, bi.Keyword, bi.Location, bi.Metanote, bi.Note, bi.Number, bi.Numpages, bi.Pages, bi.Publisher, bi.School, bi.Series, bi.URL, bi.TechreportType, bi.Volume, bi.Year)
 	return stmt, res, err
 }
 
 func main() {
-	conf := flag.String("c", "bibfuse.toml", "The config.[toml|yml] to use.")
+	conf := flag.String("config", "bibfuse.toml", "The bibfuse.[toml|yml] defining the filters.")
 	dbFile := flag.String("db", "bib.db", "The SQLite file to read/write.")
 	noOption := flag.Bool("no-optional", false, "Suppress \"OPTIONAL\" fields in the resulting bibtex.")
 	noTodo := flag.Bool("no-todo", false, "Suppress \"TODO\" fields in the resulting bibtex.")
@@ -113,14 +114,14 @@ func main() {
 		// add the path to the default config
 		_, filename, _, ok := runtime.Caller(0)
 		if !ok {
-			panic("No caller information")
+			panic("no caller information")
 		}
 		viper.AddConfigPath(filepath.Join(filepath.Dir(filename), "../../"))
 	}
 
 	// read the config file
 	if err := viper.ReadInConfig(); err != nil { // handle errors reading the config file
-		log.Fatalf("Fatal error config file: %s \n", err)
+		log.Fatalf("config: %s \n", err)
 	}
 
 	// load the filters
@@ -139,14 +140,14 @@ func main() {
 	db, err := createDB(dbPath)
 	defer db.Close()
 	if err != nil {
-		log.Fatalf("Table creation failed: %q", err)
+		log.Fatalf("table creation failed: %q", err)
 	}
 
 	// iterate the given files
 	newItemCount := 0
 	for _, f := range files {
 		filePath := filepath.Join(".", f)
-		log.Printf("Parsing %v", filePath)
+		log.Printf("parsing %v", filePath)
 		reader, err := os.Open(filePath)
 		if err != nil {
 			log.Fatal(err)
@@ -159,7 +160,7 @@ func main() {
 
 		// inject each entry to the DB
 		for _, entry := range parsed.Entries {
-			bi := filters.ConvertFromBibEntryToBibItem(entry)
+			bi := filters.BuildBibItem(entry)
 			stmt, res, err := writeToDB(db, bi)
 			if stmt != nil {
 				defer stmt.Close()
@@ -176,7 +177,7 @@ func main() {
 			if res != nil {
 				newItemCount++
 				if *verbose {
-					log.Printf("Added %s", entry.CiteName)
+					log.Printf("added %s", entry.CiteName)
 				}
 			}
 		}
@@ -185,14 +186,14 @@ func main() {
 
 	// create a new BibTex to print
 	bib := bibtex.NewBibTex()
-	rows, err := db.Query("SELECT cite_name, cite_type, title, author, booktitle, doi, edition, isbn, issn, institution, journal, keyword, location, metanote, note, number, numpages, pages, publisher, series, type, url, version, volume, year FROM entries ORDER BY cite_name ASC")
+	rows, err := db.Query("SELECT cite_name, cite_type, title, author, booktitle, doi, edition, isbn, issn, institution, journal, keyword, location, metanote, note, number, numpages, pages, publisher, school, series, type, url, version, volume, year FROM entries ORDER BY cite_name ASC")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		row := bibfuse.NewBibItem()
-		err = rows.Scan(&row.CiteName, &row.CiteType, &row.Title, &row.Author, &row.Booktitle, &row.DOI, &row.Edition, &row.ISBN, &row.ISSN, &row.Institution, &row.Journal, &row.Keyword, &row.Location, &row.Metanote, &row.Note, &row.Number, &row.Numpages, &row.Pages, &row.Publisher, &row.Series, &row.TechreportType, &row.URL, &row.Version, &row.Volume, &row.Year)
+		err = rows.Scan(&row.CiteName, &row.CiteType, &row.Title, &row.Author, &row.Booktitle, &row.DOI, &row.Edition, &row.ISBN, &row.ISSN, &row.Institution, &row.Journal, &row.Keyword, &row.Location, &row.Metanote, &row.Note, &row.Number, &row.Numpages, &row.Pages, &row.Publisher, &row.School, &row.Series, &row.TechreportType, &row.URL, &row.Version, &row.Volume, &row.Year)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -228,4 +229,5 @@ func main() {
 	}
 	defer writer.Close()
 	fmt.Fprintf(writer, outString)
+	log.Printf("%v entries written to %v", len(bib.Entries), outPath)
 }

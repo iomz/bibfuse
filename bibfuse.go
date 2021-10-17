@@ -38,6 +38,7 @@ type BibItem struct {
 	Numpages       string `default:"" bibtex:"numpages"`
 	Pages          string `default:"" bibtex:"pages"`
 	Publisher      string `default:"" bibtex:"publisher"`
+	School         string `default:"" bibtex:"school"`
 	Series         string `default:"" bibtex:"series"`
 	TechreportType string `default:"" bibtex:"type"`
 	URL            string `default:"" bibtex:"url"`
@@ -138,8 +139,8 @@ func (fs Filters) HasFilter(filterType string) bool {
 	return ok
 }
 
-// ConvertFromBibEntryToBibItem returns BibItem with the filter
-func (fs Filters) ConvertFromBibEntryToBibItem(entry *bibtex.BibEntry) BibItem {
+// BuildBibItem returns BibItem with the filter
+func (fs Filters) BuildBibItem(entry *bibtex.BibEntry) BibItem {
 	bi := NewBibItem()
 	bi.CiteName = entry.CiteName
 	bi.CiteType = entry.Type

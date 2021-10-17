@@ -2,8 +2,9 @@ package bibfuse
 
 import (
 	"bufio"
-	"os"
+	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -17,9 +18,9 @@ var itemtests = []struct {
 	out map[string]string
 }{
 	{
-		BibItem{"mizutani2021article", "article", "{Title of the Article}", "Mizutani, Iori", "", "(OPTIONAL)", "", "(OPTIONAL)", "(OPTIONAL)", "", "(TODO)", "(OPTIONAL)", "", "(OPTIONAL)", "", "(OPTIONAL)", "(OPTIONAL)", "(OPTIONAL)", "(OPTIONAL)", "", "", "(OPTIONAL)", "", "(OPTIONAL)", "2021"},
+		BibItem{"mizutani2021article", "article", "{Title of the Article}", "Mizutani, Iori", "", "(OPTIONAL)", "", "(OPTIONAL)", "(OPTIONAL)", "", "(TODO)", "(OPTIONAL)", "", "(OPTIONAL)", "", "(OPTIONAL)", "(OPTIONAL)", "(OPTIONAL)", "(OPTIONAL)", "", "", "", "(OPTIONAL)", "", "(OPTIONAL)", "2021"},
 		ByBibTexName,
-		map[string]string{"author": "Mizutani, Iori", "booktitle": "", "cite_name": "mizutani2021article", "cite_type": "article", "doi": "(OPTIONAL)", "edition": "", "institution": "", "isbn": "(OPTIONAL)", "issn": "(OPTIONAL)", "journal": "(TODO)", "keyword": "(OPTIONAL)", "location": "", "metanote": "(OPTIONAL)", "note": "", "number": "(OPTIONAL)", "numpages": "(OPTIONAL)", "pages": "(OPTIONAL)", "publisher": "(OPTIONAL)", "series": "", "title": "{Title of the Article}", "type": "", "url": "(OPTIONAL)", "version": "", "volume": "(OPTIONAL)", "year": "2021"},
+		map[string]string{"author": "Mizutani, Iori", "booktitle": "", "cite_name": "mizutani2021article", "cite_type": "article", "doi": "(OPTIONAL)", "edition": "", "institution": "", "isbn": "(OPTIONAL)", "issn": "(OPTIONAL)", "journal": "(TODO)", "keyword": "(OPTIONAL)", "location": "", "metanote": "(OPTIONAL)", "note": "", "number": "(OPTIONAL)", "numpages": "(OPTIONAL)", "pages": "(OPTIONAL)", "publisher": "(OPTIONAL)", "school": "", "series": "", "title": "{Title of the Article}", "type": "", "url": "(OPTIONAL)", "version": "", "volume": "(OPTIONAL)", "year": "2021"},
 	},
 }
 
@@ -57,6 +58,7 @@ var bibtests = []struct {
     numpages    = "(OPTIONAL)",
     pages       = "(OPTIONAL)",
     publisher   = "(OPTIONAL)",
+    school      = "",
     series      = "",
     type        = "",
     version     = "",
@@ -85,6 +87,7 @@ var bibtests = []struct {
     numpages    = "",
     pages       = "",
     publisher   = "(TODO)",
+    school      = "",
     series      = "",
     type        = "",
     version     = "",
@@ -113,6 +116,7 @@ var bibtests = []struct {
     numpages    = "(OPTIONAL)",
     pages       = "(OPTIONAL)",
     publisher   = "(TODO)",
+    school      = "",
     series      = "",
     type        = "",
     version     = "",
@@ -141,7 +145,37 @@ var bibtests = []struct {
     numpages    = "(OPTIONAL)",
     pages       = "(OPTIONAL)",
     publisher   = "(OPTIONAL)",
+    school      = "",
     series      = "(OPTIONAL)",
+    type        = "",
+    version     = "",
+    volume      = "",
+    year        = "(TODO)",
+}
+`,
+	}, {
+		"@mastersthesis{mizutani2021mastersthesis,\ntitle={{Title of the Master's Thesis}},\n}",
+		`@mastersthesis{mizutani2021mastersthesis,
+    title       = {{Title of the Master's Thesis}},
+    author      = "(TODO)",
+    url         = "(OPTIONAL)",
+    booktitle   = "",
+    doi         = "",
+    edition     = "",
+    institution = "",
+    isbn        = "",
+    issn        = "",
+    journal     = "",
+    keyword     = "",
+    location    = "",
+    metanote    = "(OPTIONAL)",
+    note        = "",
+    number      = "",
+    numpages    = "",
+    pages       = "",
+    publisher   = "",
+    school      = "(TODO)",
+    series      = "",
     type        = "",
     version     = "",
     volume      = "",
@@ -169,6 +203,36 @@ var bibtests = []struct {
     numpages    = "",
     pages       = "",
     publisher   = "",
+    school      = "",
+    series      = "",
+    type        = "",
+    version     = "",
+    volume      = "",
+    year        = "(TODO)",
+}
+`,
+	}, {
+		"@phdthesis{mizutani2021phdthesis,\ntitle={{Title of the Ph.D. Thesis}},\n}",
+		`@phdthesis{mizutani2021phdthesis,
+    title       = {{Title of the Ph.D. Thesis}},
+    author      = "(TODO)",
+    url         = "(OPTIONAL)",
+    booktitle   = "",
+    doi         = "",
+    edition     = "",
+    institution = "",
+    isbn        = "",
+    issn        = "",
+    journal     = "",
+    keyword     = "",
+    location    = "",
+    metanote    = "(OPTIONAL)",
+    note        = "",
+    number      = "",
+    numpages    = "",
+    pages       = "",
+    publisher   = "",
+    school      = "(TODO)",
     series      = "",
     type        = "",
     version     = "",
@@ -197,6 +261,7 @@ var bibtests = []struct {
     numpages    = "",
     pages       = "",
     publisher   = "",
+    school      = "",
     series      = "(OPTIONAL)",
     type        = "",
     version     = "(OPTIONAL)",
@@ -204,10 +269,39 @@ var bibtests = []struct {
     year        = "(TODO)",
 }
 `,
+	}, {
+		"@unpublished{mizutani2021unpublished,\ntitle={{Title of the Unpublished Work}},\nauthor=\"Mizutani, Iori\",\n}",
+		`@unpublished{mizutani2021unpublished,
+    title       = {{Title of the Unpublished Work}},
+    author      = "Mizutani, Iori",
+    url         = "(TODO)",
+    booktitle   = "",
+    doi         = "",
+    edition     = "",
+    institution = "",
+    isbn        = "",
+    issn        = "",
+    journal     = "",
+    keyword     = "",
+    location    = "",
+    metanote    = "(OPTIONAL)",
+    note        = "(TODO)",
+    number      = "",
+    numpages    = "",
+    pages       = "",
+    publisher   = "",
+    school      = "",
+    series      = "",
+    type        = "",
+    version     = "",
+    volume      = "",
+    year        = "",
+}
+`,
 	},
 }
 
-func TestFiltersUpdate(t *testing.T) {
+func TestBuildBibItem(t *testing.T) {
 	filters := loadConfig(t)
 	for _, tt := range bibtests {
 		parsed, err := bibtex.Parse(strings.NewReader(tt.in))
@@ -215,7 +309,7 @@ func TestFiltersUpdate(t *testing.T) {
 			t.Error(err)
 		}
 		entry := parsed.Entries[0]
-		bi := filters.ConvertFromBibEntryToBibItem(entry)
+		bi := filters.BuildBibItem(entry)
 		entry = bi.ToBibEntry()
 		bt := bibtex.NewBibTex()
 		bt.AddEntry(entry)
@@ -245,7 +339,7 @@ var fieldtests = []struct {
 	{
 		NewBibItem(),
 		map[string]string{"name": "title", "value": "Title"},
-		BibItem{"", "", "Title", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""},
+		BibItem{"", "", "Title", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""},
 		nil,
 	},
 }
@@ -266,7 +360,7 @@ var bibitemtests = []struct {
 	out string
 }{
 	{
-		BibItem{"mizutani2021article", "article", "{Title of the Article}", "Mizutani, Iori", "", "(OPTIONAL)", "", "(OPTIONAL)", "(OPTIONAL)", "", "(TODO)", "(OPTIONAL)", "", "(OPTIONAL)", "", "(OPTIONAL)", "(OPTIONAL)", "(OPTIONAL)", "(OPTIONAL)", "", "", "(OPTIONAL)", "", "(OPTIONAL)", "2021"},
+		BibItem{"mizutani2021article", "article", "{Title of the Article}", "Mizutani, Iori", "", "(OPTIONAL)", "", "(OPTIONAL)", "(OPTIONAL)", "", "(TODO)", "(OPTIONAL)", "", "(OPTIONAL)", "", "(OPTIONAL)", "(OPTIONAL)", "(OPTIONAL)", "(OPTIONAL)", "", "", "", "(OPTIONAL)", "", "(OPTIONAL)", "2021"},
 		`@article{mizutani2021article,
     title       = {{Title of the Article}},
     author      = "Mizutani, Iori",
@@ -286,6 +380,7 @@ var bibitemtests = []struct {
     numpages    = "(OPTIONAL)",
     pages       = "(OPTIONAL)",
     publisher   = "(OPTIONAL)",
+    school      = "",
     series      = "",
     type        = "",
     version     = "",
@@ -326,9 +421,13 @@ func bibEntryEqual(t *testing.T, from, to string) bool {
 
 // generateFilters loads up the default filters
 func loadConfig(t *testing.T) Filters {
-	cwd, _ := os.Getwd()
 	viper.SetConfigName("bibfuse")
-	viper.AddConfigPath(cwd)
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		panic("No caller information")
+	}
+	viper.AddConfigPath(filepath.Dir(filename))
+
 	if err := viper.ReadInConfig(); err != nil { // handle errors reading the config file
 		t.Errorf("Fatal error config file: %s \n", err)
 	}

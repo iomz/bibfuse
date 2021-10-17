@@ -18,3 +18,4 @@
 *.bib
 *.db
 *..db-journal
+.secrets

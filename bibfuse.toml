@@ -77,6 +77,18 @@ optionals = [
 	"year"
 ]
 
+[mastersthesis]
+todos = [
+	"author",
+	"title",
+	"school",
+	"year"
+]
+optionals = [
+	"metanote",
+	"url",
+]
+
 [misc]
 todos = [
 	"author",
@@ -102,6 +114,29 @@ optionals = [
 	"series",
 	"url",
 	"version"
+]
+
+[unpublished]
+todos = [
+	"author",
+	"title",
+	"note",
+	"url"
+]
+optionals = [
+	"metanote"
+]
+
+[phdthesis]
+todos = [
+	"author",
+	"title",
+	"school",
+	"year"
+]
+optionals = [
+	"metanote",
+	"url",
 ]
 
 [default]
