@@ -29,7 +29,7 @@ Usage of bibfuse: [options] [.bib ... .bib]
   -out string
         The resulting bibtex to write (it overrides if exists). (default "out.bib")
   -show-empty
-        Suppress empty fields in the resulting bibtex.
+        Do not hide empty fields in the resulting bibtex.
   -verbose
         Print verbose messages.
   -version

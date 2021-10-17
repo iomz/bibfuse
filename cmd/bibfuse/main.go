@@ -84,7 +84,7 @@ func main() {
 	noOption := flag.Bool("no-optional", false, "Suppress \"OPTIONAL\" fields in the resulting bibtex.")
 	noTodo := flag.Bool("no-todo", false, "Suppress \"TODO\" fields in the resulting bibtex.")
 	outFile := flag.String("out", "out.bib", "The resulting bibtex to write (it overrides if exists).")
-	showEmpty := flag.Bool("show-empty", false, "Suppress empty fields in the resulting bibtex.")
+	showEmpty := flag.Bool("show-empty", false, "Do not hide empty fields in the resulting bibtex.")
 	verbose := flag.Bool("verbose", false, "Print verbose messages.")
 	version := flag.Bool("version", false, "Print version.")
 	flag.Usage = func() {
