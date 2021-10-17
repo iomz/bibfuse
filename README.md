@@ -6,13 +6,17 @@ bibfuse
 
 A CLI tool to manage bibtex entries using [nickng/bibtex](https://github.com/nickng/bibtex).
 
-Create a SQLite database file (`--db`) from given BibTex files (`*.bib`), and create a single, *clean* `.bib` file (`--out`).
+bibfuse creates an SQLite database file (`--db`) from given BibTex files (`*.bib`), and generates a single *clean* `.bib` file (`--out`).
+
+The filtering formats can be defined in the config file (`--config`). bibfuse takes the `bibfuse.toml` in this package by default.
 
 If no `.bib` files are given, it just reads the database and update the BibTex file.
 
 ```console
 % bibfuse -h
 Usage of bibfuse: [options] [.bib ... .bib]
+  -config string
+        The bibfuse.[toml|yml] defining the filters. (default "bibfuse.toml")
   -db string
         The SQLite file to read/write. (default "bib.db")
   -no-optional
@@ -21,11 +25,15 @@ Usage of bibfuse: [options] [.bib ... .bib]
         Suppress "TODO" fields in the resulting bibtex.
   -out string
         The resulting bibtex to write (it overrides if exists). (default "out.bib")
+  -show-empty
+        Suppress empty fields in the resulting bibtex.
+  -verbose
+        Print verbose messages.
   -version
         Print version.
 ```
 
-## Synopsis
+# Synopsis
 This tool takes `.bib` files and filter fields for each entry depending on the type: article, book, inproceedings, misc, and techreport.
 The mandatory fields are filled with `(TODO)` and optional fileds are filled with `(OPTIONAL)` by default.
 
@@ -55,13 +63,13 @@ The mandatory fields are filled with `(TODO)` and optional fileds are filled wit
 }
 ```
 
-## BibTex entry format
+# BibTex entry format
 
 bibfuse reflects rather subjective opinion to filter and flag the required fields depending on the type.
 
 Aiming for the compatibility with most of the research publication requirements.
 
-### Journal articles
+## Journal articles
 ```
 @article{mizutani2021article
     title     = {{Title of the Article}},
@@ -82,7 +90,7 @@ Aiming for the compatibility with most of the research publication requirements.
 }
 ```
 
-### Books
+## Books
 ```
 @book{mizutani2021book,
     title     = {{Title of the Book}},
@@ -98,7 +106,7 @@ Aiming for the compatibility with most of the research publication requirements.
 }
 ```
 
-### Chapters or articles in a book
+## Chapters or articles in a book
 ```
 @incollection{mizutani2012incollection,
     title     = {{Title of the Book Chapter}},
@@ -119,7 +127,7 @@ Aiming for the compatibility with most of the research publication requirements.
 }
 ```
 
-### Conference papers, lecture notes, extended abstract, etc.
+## Conference papers, lecture notes, extended abstract, etc.
 ```
 @inproceedings{mizutani2012inproceedings,
     title     = {{Title of the Conference Paper}},
@@ -140,7 +148,20 @@ Aiming for the compatibility with most of the research publication requirements.
 }
 ```
 
-### Online resources, artifacts, etc.
+## Master's theses
+```
+@mastersthesis{mizutani2021mastersthesis,
+    title       = {{Title of the Master's Thesis}},
+    author      = "(TODO)",
+    url         = "(OPTIONAL)",
+    metanote    = "(OPTIONAL)",
+    school      = "(TODO)",
+    year        = "(TODO)",
+}
+
+```
+
+## Online resources, artifacts, etc.
 ```
 @misc{mizutani2021misc,
     title       = "Title of the Resource",
@@ -153,7 +174,19 @@ Aiming for the compatibility with most of the research publication requirements.
 }
 ```
 
-### Standards, specifications, white papers, etc.
+## Ph.D. theses / dissertations
+```
+@phdthesis{mizutani2021phdthesis,
+    title       = {{Title of the Ph.D. Thesis}},
+    author      = "(TODO)",
+    url         = "(OPTIONAL)",
+    metanote    = "(OPTIONAL)",
+    school      = "(TODO)",
+    year        = "(TODO)",
+}
+```
+
+## Standards, specifications, white papers, etc.
 ```
 @techreport{mizutani2021techreport,
     title       = {{Title of the Technical Document}},
@@ -166,3 +199,22 @@ Aiming for the compatibility with most of the research publication requirements.
     version     = "(OPTIONAL)",
 }
 ```
+
+## Documents not formally published.
+```
+@unpublished{mizutani2021unpublished,
+    title       = {{Title of the Unpublished Work}},
+    author      = "(TODO)",
+    url         = "(TODO)",
+    metanote    = "(OPTIONAL)",
+    note        = "(TODO)",
+}
+```
+
+# Author
+
+Iori Mizutani ([@iomz](https://github.com/iomz))
+
+# License
+
+See `LICENSE`.
