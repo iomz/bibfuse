@@ -13,7 +13,7 @@ bibfuse creates an SQLite database file (`--db`) from given BibTex files (`*.bib
 
 The filtering formats can be defined in the config file (`--config`). bibfuse takes the `bibfuse.toml` in this package by default.
 
-If no `.bib` files are given, it just reads the database and update the BibTex file.
+If no `.bib` files are given, it just reads the database and updates the BibTex file.
 
 ```console
 % bibfuse -h
@@ -37,17 +37,13 @@ Usage of bibfuse: [options] [.bib ... .bib]
 ```
 
 # Synopsis
-This tool takes `.bib` files and filter fields for each entry depending on the type: article, book, inproceedings, misc, and techreport.
-The mandatory fields are filled with `(TODO)` and optional fileds are filled with `(OPTIONAL)` by default.
 
 ## Install
-
 ```console
 % go get -u github.com/iomz/bibfuse
 ```
 
 ## Usage
-
 ```console
 % cat ref.bib
 @article{someone2021a,
@@ -79,7 +75,6 @@ The mandatory fields are filled with `(TODO)` and optional fileds are filled wit
 ```
 
 ## Usage with Docker
-
 ```console
 % cat ref.bib
 @article{someone2021a,
@@ -95,10 +90,11 @@ The mandatory fields are filled with `(TODO)` and optional fileds are filled wit
 ```
 
 # BibTex entry format
+bibfuse reflects rather subjective opinion to filter and flag the required fields depending on the typem aiming for the compatibility with most of the research publication requirements.
 
-bibfuse reflects rather subjective opinion to filter and flag the required fields depending on the type.
+bibfuse filters fields for each entry depending on the type: `@article`, `@book`, `@incollection`, `@inproceedings`, `@mastersthesis`, `@misc`, `@phdthesis`, `@techreport`, and `@unpublished` as defined in `bibfuse.toml`.
 
-Aiming for the compatibility with most of the research publication requirements.
+Mandatory fields are filled with `(TODO)` while optional fileds are filled with `(OPTIONAL)`.
 
 ## Journal articles
 ```
@@ -243,13 +239,10 @@ Aiming for the compatibility with most of the research publication requirements.
 ```
 
 # Contribution
-
 See `CONTRIBUTING.md`.
 
 # License
-
 See `LICENSE`.
 
 # Author
-
 Iori Mizutani ([@iomz](https://github.com/iomz))
