@@ -1,10 +1,10 @@
 # Contributing to bibfuse
 
-This document provides general information for contributing to xarm-commander.
+This document provides general information for contributing to bibfuse.
 
 ## Commits
 
-xarm-commander is maintained to be compatible with [Conventional Changelog](https://github.com/conventional-changelog/conventional-changelog), which structure Git commit messages in a way that allows automatic generation of changelogs.
+bibfuse is maintained to be compatible with [Conventional Changelog](https://github.com/conventional-changelog/conventional-changelog), which structure Git commit messages in a way that allows automatic generation of changelogs.
 Commit messages must be structured as follows:
 ```
 <type>(<scope>): <subject>
