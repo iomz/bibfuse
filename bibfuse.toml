@@ -10,7 +10,6 @@ optionals = [
 	"doi",
 	"isbn",
 	"issn",
-	"keyword",
 	"metanote",
 	"number",
 	"numpages",
@@ -46,7 +45,6 @@ todos = [
 ]
 optionals = [
 	"doi",
-	"keyword",
 	"isbn",
 	"issn",
 	"metanote",
@@ -66,8 +64,6 @@ optionals = [
 	"doi",
 	"isbn",
 	"issn",
-	"keyword",
-	"location",
 	"metanote",
 	"numpages",
 	"pages",

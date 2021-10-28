@@ -30,8 +30,6 @@ type BibItem struct {
 	ISSN           string `default:"" bibtex:"issn"`
 	Institution    string `default:"" bibtex:"institution"`
 	Journal        string `default:"" bibtex:"journal"`
-	Keyword        string `default:"" bibtex:"keyword"`
-	Location       string `default:"" bibtex:"location"`
 	Metanote       string `default:"" bibtex:"metanote"`
 	Note           string `default:"" bibtex:"note"`
 	Number         string `default:"" bibtex:"number"`

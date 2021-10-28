@@ -38,8 +38,6 @@ func createDB(dbPath string) (*sql.DB, error) {
             issn TEXT DEFAULT "",
             institution TEXT DEFAULT "",
             journal TEXT DEFAULT "",
-            keyword TEXT DEFAULT "",
-            location TEXT DEFAULT "",
             metanote TEXT DEFAULT "",
             note TEXT DEFAULT "",
             number TEXT DEFAULT "",
@@ -69,12 +67,12 @@ func writeToDB(db *sql.DB, bi bibfuse.BibItem) (*sql.Stmt, sql.Result, error) {
 	}
 	defer tx.Commit()
 
-	stmt, err = tx.Prepare("INSERT INTO entries (cite_name, cite_type, title, author, booktitle, doi, edition, isbn, issn, institution, journal, keyword, location, metanote, note, number, numpages, pages, publisher, school, series, url, type, volume, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+	stmt, err = tx.Prepare("INSERT INTO entries (cite_name, cite_type, title, author, booktitle, doi, edition, isbn, issn, institution, journal, metanote, note, number, numpages, pages, publisher, school, series, url, type, volume, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
 	if err != nil {
 		log.Fatal(err)
 	}
 	res, err = stmt.Exec(bi.CiteName, bi.CiteType, bi.Title, bi.Author,
-		bi.Booktitle, bi.DOI, bi.Edition, bi.ISBN, bi.ISSN, bi.Institution, bi.Journal, bi.Keyword, bi.Location, bi.Metanote, bi.Note, bi.Number, bi.Numpages, bi.Pages, bi.Publisher, bi.School, bi.Series, bi.URL, bi.TechreportType, bi.Volume, bi.Year)
+		bi.Booktitle, bi.DOI, bi.Edition, bi.ISBN, bi.ISSN, bi.Institution, bi.Journal, bi.Metanote, bi.Note, bi.Number, bi.Numpages, bi.Pages, bi.Publisher, bi.School, bi.Series, bi.URL, bi.TechreportType, bi.Volume, bi.Year)
 	return stmt, res, err
 }
 
@@ -186,14 +184,14 @@ func main() {
 
 	// create a new BibTex to print
 	bib := bibtex.NewBibTex()
-	rows, err := db.Query("SELECT cite_name, cite_type, title, author, booktitle, doi, edition, isbn, issn, institution, journal, keyword, location, metanote, note, number, numpages, pages, publisher, school, series, type, url, version, volume, year FROM entries ORDER BY cite_name ASC")
+	rows, err := db.Query("SELECT cite_name, cite_type, title, author, booktitle, doi, edition, isbn, issn, institution, journal, metanote, note, number, numpages, pages, publisher, school, series, type, url, version, volume, year FROM entries ORDER BY cite_name ASC")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		row := bibfuse.NewBibItem()
-		err = rows.Scan(&row.CiteName, &row.CiteType, &row.Title, &row.Author, &row.Booktitle, &row.DOI, &row.Edition, &row.ISBN, &row.ISSN, &row.Institution, &row.Journal, &row.Keyword, &row.Location, &row.Metanote, &row.Note, &row.Number, &row.Numpages, &row.Pages, &row.Publisher, &row.School, &row.Series, &row.TechreportType, &row.URL, &row.Version, &row.Volume, &row.Year)
+		err = rows.Scan(&row.CiteName, &row.CiteType, &row.Title, &row.Author, &row.Booktitle, &row.DOI, &row.Edition, &row.ISBN, &row.ISSN, &row.Institution, &row.Journal, &row.Metanote, &row.Note, &row.Number, &row.Numpages, &row.Pages, &row.Publisher, &row.School, &row.Series, &row.TechreportType, &row.URL, &row.Version, &row.Volume, &row.Year)
 		if err != nil {
 			log.Fatal(err)
 		}
