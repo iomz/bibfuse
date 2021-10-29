@@ -52,6 +52,28 @@ func NewAuthor(firstName, lastName string) (*Author, error) {
 // Authors are a slice of multiple Author
 type Authors []*Author
 
+// NewAuthors return a new Authors
+func NewAuthors(authorFieldValue string) (Authors, error) {
+	var authors Authors
+
+	rawAuthorsStringSlice := strings.Split(authorFieldValue, "and")
+	for _, rawAuthorString := range rawAuthorsStringSlice {
+		authorNames := strings.Split(rawAuthorString, ",")
+		if len(authorNames) < 2 {
+		} else {
+			author, err := NewAuthor(
+				strings.TrimSpace(authorNames[1]),
+				strings.TrimSpace(authorNames[0]),
+			)
+			if err != nil {
+				return authors, err
+			}
+			authors = append(authors, author)
+		}
+	}
+	return authors, nil
+}
+
 // String returns a string for the author field
 func (as Authors) String() string {
 	var sb strings.Builder

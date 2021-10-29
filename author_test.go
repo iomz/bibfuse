@@ -55,7 +55,7 @@ func TestNewAuthor(t *testing.T) {
 	}
 }
 
-var authorstests = []struct {
+var authorsstringtests = []struct {
 	in  Authors
 	out string
 }{
@@ -70,10 +70,34 @@ var authorstests = []struct {
 }
 
 func TestAuthorsString(t *testing.T) {
-	for _, tt := range authorstests {
+	for _, tt := range authorsstringtests {
 		result := tt.in.String()
 		if result != tt.out {
 			t.Errorf("Authors.String() => %v, want %v", result, tt.out)
+		}
+	}
+}
+
+var authorstests = []struct {
+	in  string
+	err error
+	out string
+}{
+	{
+		"Mizutani, Iori and Ramanathan, Ganesh and Mayer, Simon",
+		nil,
+		"Mizutani, Iori and Ramanathan, Ganesh and Mayer, Simon",
+	},
+}
+
+func TestAuthors(t *testing.T) {
+	for _, tt := range authorstests {
+		authors, err := NewAuthors(tt.in)
+		if err != nil && err.Error() != tt.err.Error() {
+			t.Errorf("NewAuthors(%v) err => %v, want %v", tt.in, err, tt.err)
+		}
+		if authors.String() != tt.out {
+			t.Errorf("Authors.String() => %v, want %v", authors.String(), tt.out)
 		}
 	}
 }
