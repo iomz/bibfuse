@@ -9,7 +9,7 @@ import (
 
 // Author holds an author information
 type Author struct {
-	FirstName string `default:"" sqlite3:"fist_name"`
+	FirstName string `default:"" sqlite3:"fist_name"` // this can be empty
 	LastName  string `default:"" sqlite3:"last_name"`
 }
 
@@ -59,17 +59,25 @@ func NewAuthors(authorFieldValue string) (Authors, error) {
 	rawAuthorsStringSlice := strings.Split(authorFieldValue, "and")
 	for _, rawAuthorString := range rawAuthorsStringSlice {
 		authorNames := strings.Split(rawAuthorString, ",")
-		if len(authorNames) < 2 {
-		} else {
-			author, err := NewAuthor(
+		a := new(Author)
+		var err error
+		switch len(authorNames) {
+		case 1:
+			// put the name to LastName
+			a, err = NewAuthor("", strings.TrimSpace(authorNames[0]))
+		case 2:
+			a, err = NewAuthor(
 				strings.TrimSpace(authorNames[1]),
 				strings.TrimSpace(authorNames[0]),
 			)
-			if err != nil {
-				return authors, err
-			}
-			authors = append(authors, author)
+		default:
+			err = errors.New("too many comma")
 		}
+		if err != nil {
+			return authors, err
+		}
+
+		authors = append(authors, a)
 	}
 	return authors, nil
 }
@@ -81,8 +89,12 @@ func (as Authors) String() string {
 		if sb.Len() != 0 { // if it's not the first author
 			sb.WriteString(" and ")
 		}
-		sb.WriteString(fmt.Sprintf("%s, ", a.LastName))
-		sb.WriteString(a.FirstName)
+		if a.FirstName == "" {
+			sb.WriteString(a.LastName)
+		} else {
+			sb.WriteString(fmt.Sprintf("%s, ", a.LastName))
+			sb.WriteString(a.FirstName)
+		}
 	}
 	return sb.String()
 }

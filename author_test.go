@@ -88,6 +88,31 @@ var authorstests = []struct {
 		nil,
 		"Mizutani, Iori and Ramanathan, Ganesh and Mayer, Simon",
 	},
+	{
+		"Internet Engineering Task Force",
+		nil,
+		"Internet Engineering Task Force",
+	},
+	{
+		"Dal{\\'i} i Dom{\\`e}nech, 1st Marquess of Dal{\\'i} of P{\\'u}bol, Salvador Domingo Felipe Jacinto",
+		errors.New("too many comma"),
+		"",
+	},
+	{
+		"Mizutani, Iori and Pitt, William B.",
+		errors.New(""),
+		"Mizutani, Iori and Pitt, William B.",
+	},
+	{
+		"Pitt, William B",
+		errors.New("no dot in abbreviation"),
+		"",
+	},
+	{
+		"Mizutani, Iori, Dr.sc.",
+		errors.New("too many comma"),
+		"",
+	},
 }
 
 func TestAuthors(t *testing.T) {
