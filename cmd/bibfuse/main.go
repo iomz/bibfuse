@@ -83,6 +83,7 @@ func main() {
 	noTodo := flag.Bool("no-todo", false, "Suppress \"TODO\" fields in the resulting bibtex.")
 	outFile := flag.String("out", "out.bib", "The resulting bibtex to write (it overrides if exists).")
 	showEmpty := flag.Bool("show-empty", false, "Do not hide empty fields in the resulting bibtex.")
+	smart := flag.Bool("smart", false, "Use oneof selectively filters when importing bibtex.")
 	verbose := flag.Bool("verbose", false, "Print verbose messages.")
 	version := flag.Bool("version", false, "Print version.")
 	flag.Usage = func() {
@@ -122,15 +123,23 @@ func main() {
 		log.Fatalf("config: %s \n", err)
 	}
 
-	// load the filters
+	// load the filters and oneofs
 	filters := make(bibfuse.Filters)
+	oneofs := make(bibfuse.Oneofs)
 	for _, key := range viper.AllKeys() {
 		keys := strings.Split(key, ".")
 		citeType, filterType := keys[0], keys[1]
-		if !filters.HasFilter(citeType) {
-			filters[citeType] = bibfuse.NewFilter()
+		if filterType == "todos" || filterType == "optionals" {
+			if !filters.HasFilter(citeType) {
+				filters[citeType] = bibfuse.NewFilter()
+			}
+			filters[citeType][filterType] = viper.GetStringSlice(key)
+		} else if strings.HasPrefix(filterType, "oneof_") {
+			if !oneofs.HasOneof(citeType) {
+				oneofs[citeType] = bibfuse.NewOneof()
+			}
+			oneofs[citeType].AddOneof(viper.GetStringSlice(key))
 		}
-		filters[citeType][filterType] = viper.GetStringSlice(key)
 	}
 
 	// create the db
@@ -158,7 +167,7 @@ func main() {
 
 		// inject each entry to the DB
 		for _, entry := range parsed.Entries {
-			bi, err := filters.BuildBibItem(entry)
+			bi, err := filters.BuildBibItem(entry, *smart, oneofs)
 			if err != nil {
 				log.Println(err)
 				continue
