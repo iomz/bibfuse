@@ -3,8 +3,52 @@ package bibfuse
 import (
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 )
+
+var lastnametests = []struct {
+	in  string
+	err error
+	out string
+}{
+	{
+		"Mizutani",
+		nil,
+		"Mizutani",
+	},
+	{
+		`M \& A`,
+		nil,
+		`M \& A`,
+	},
+	{
+		`M \\\\\\\& A`,
+		nil,
+		`M \& A`,
+	},
+	{
+		`M \\\\\\& A`,
+		nil,
+		`M \& A`,
+	},
+}
+
+func TestLastNameCleaner(t *testing.T) {
+	for _, tt := range lastnametests {
+		ln, err := LastNameCleaner(tt.in)
+		if err != nil {
+			if tt.err == nil {
+				t.Errorf("LastNameCleaner(%v) err => %v, want nil", tt.in, err)
+			} else if !strings.Contains(err.Error(), tt.err.Error()) {
+				t.Errorf("LastNameCleaner(%v) err => %v, want %v", tt.in, err, tt.err)
+			}
+		}
+		if ln != tt.out {
+			t.Errorf("LastNameCleaner(%v) => %v, want %v", tt.in, ln, tt.out)
+		}
+	}
+}
 
 var authortests = []struct {
 	in  map[string]string
@@ -37,6 +81,11 @@ var authortests = []struct {
 		nil,
 	},
 	{
+		map[string]string{"first_name": `S{\o}ren Aabye`, "last_name": "Kierkegaard"},
+		nil,
+		&Author{`S{\o}ren Aabye`, "Kierkegaard"},
+	},
+	{
 		map[string]string{"first_name": "Iori", "last_name": "M."},
 		errors.New("last name should not be abbreviated"),
 		nil,
@@ -46,8 +95,12 @@ var authortests = []struct {
 func TestNewAuthor(t *testing.T) {
 	for _, tt := range authortests {
 		a, err := NewAuthor(tt.in["first_name"], tt.in["last_name"])
-		if err != nil && err.Error() != tt.err.Error() {
-			t.Errorf("NewAuthor(%v, %v) err => %v, want %v", tt.in["first_name"], tt.in["last_name"], err, tt.err)
+		if err != nil {
+			if tt.err == nil {
+				t.Errorf("NewAuthor(%v, %v) err => %v, want nil", tt.in["first_name"], tt.in["last_name"], err)
+			} else if !strings.Contains(err.Error(), tt.err.Error()) {
+				t.Errorf("NewAuthor(%v, %v) err => %v, want %v", tt.in["first_name"], tt.in["last_name"], err, tt.err)
+			}
 		}
 		if !reflect.DeepEqual(a, tt.out) {
 			t.Errorf("NewAuthor(%v, %v) => %v, want %v", tt.in["first_name"], tt.in["last_name"], a, tt.out)
@@ -118,8 +171,12 @@ var authorstests = []struct {
 func TestAuthors(t *testing.T) {
 	for _, tt := range authorstests {
 		authors, err := NewAuthors(tt.in)
-		if err != nil && err.Error() != tt.err.Error() {
-			t.Errorf("NewAuthors(%v) err => %v, want %v", tt.in, err, tt.err)
+		if err != nil {
+			if tt.err == nil {
+				t.Errorf("NewAuthors(%v) err => %v, want nil", tt.in, err)
+			} else if !strings.Contains(err.Error(), tt.err.Error()) {
+				t.Errorf("NewAuthors(%v) err => %v, want %v", tt.in, err, tt.err)
+			}
 		}
 		if authors.String() != tt.out {
 			t.Errorf("Authors.String() => %v, want %v", authors.String(), tt.out)

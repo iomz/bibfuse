@@ -2,6 +2,7 @@ package bibfuse
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 
 	"github.com/nickng/bibtex"
@@ -138,13 +139,22 @@ func (fs Filters) HasFilter(filterType string) bool {
 }
 
 // BuildBibItem returns BibItem with the filter
-func (fs Filters) BuildBibItem(entry *bibtex.BibEntry) BibItem {
+func (fs Filters) BuildBibItem(entry *bibtex.BibEntry) (BibItem, error) {
 	bi := NewBibItem()
 	bi.CiteName = entry.CiteName
 	bi.CiteType = entry.Type
 
 	for k, v := range entry.Fields {
-		bi.SetFieldByBibTexName(k, v.String())
+		switch k {
+		case "author":
+			authors, err := NewAuthors(v.String())
+			if err != nil {
+				return bi, fmt.Errorf("[%v] %w", bi.CiteName, err)
+			}
+			bi.SetFieldByBibTexName(k, authors.String())
+		default:
+			bi.SetFieldByBibTexName(k, v.String())
+		}
 	}
 
 	for k, v := range bi.AllFields(ByBibTexName) {
@@ -157,5 +167,5 @@ func (fs Filters) BuildBibItem(entry *bibtex.BibEntry) BibItem {
 		}
 	}
 
-	return bi
+	return bi, nil
 }

@@ -158,7 +158,11 @@ func main() {
 
 		// inject each entry to the DB
 		for _, entry := range parsed.Entries {
-			bi := filters.BuildBibItem(entry)
+			bi, err := filters.BuildBibItem(entry)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
 			stmt, res, err := writeToDB(db, bi)
 			if stmt != nil {
 				defer stmt.Close()
@@ -218,6 +222,8 @@ func main() {
 		re := regexp.MustCompile("(?m)[\r\n]+^.*\"\".*$")
 		outString = re.ReplaceAllString(outString, "")
 	}
+	// replace multiple backslash
+	outString = bibfuse.BackslashCleaner(outString)
 
 	// write to a file
 	outPath := filepath.Join(".", *outFile)

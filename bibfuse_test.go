@@ -35,10 +35,12 @@ func TestAllFields(t *testing.T) {
 
 var bibtests = []struct {
 	in  string
+	err error
 	out string
 }{
 	{
 		"@article{mizutani2021article,\ntitle={{Title of the Article}},\nauthor=\"Mizutani, Iori\",\n}",
+		nil,
 		`@article{mizutani2021article,
     title       = {{Title of the Article}},
     author      = "Mizutani, Iori",
@@ -66,6 +68,7 @@ var bibtests = []struct {
 `,
 	}, {
 		"@book{mizutani2021book,\ntitle={{Title of the Book}},\nauthor=\"Mizutani, Iori\",\n}",
+		nil,
 		`@book{mizutani2021book,
     title       = {{Title of the Book}},
     author      = "Mizutani, Iori",
@@ -93,6 +96,7 @@ var bibtests = []struct {
 `,
 	}, {
 		"@incollection{mizutani2021incollection,\ntitle={{Title of the Book Chapter}},\nauthor=\"Mizutani, Iori\",\n}",
+		nil,
 		`@incollection{mizutani2021incollection,
     title       = {{Title of the Book Chapter}},
     author      = "Mizutani, Iori",
@@ -120,6 +124,7 @@ var bibtests = []struct {
 `,
 	}, {
 		"@inproceedings{mizutani2021inproceedings,\ntitle={{Title of the Conference Paper}},\nauthor=\"Mizutani, Iori\",\n}",
+		nil,
 		`@inproceedings{mizutani2021inproceedings,
     title       = {{Title of the Conference Paper}},
     author      = "Mizutani, Iori",
@@ -147,6 +152,7 @@ var bibtests = []struct {
 `,
 	}, {
 		"@mastersthesis{mizutani2021mastersthesis,\ntitle={{Title of the Master's Thesis}},\n}",
+		nil,
 		`@mastersthesis{mizutani2021mastersthesis,
     title       = {{Title of the Master's Thesis}},
     author      = "(TODO)",
@@ -174,6 +180,7 @@ var bibtests = []struct {
 `,
 	}, {
 		"@misc{mizutani2021misc,\ntitle={{Title of the Resource}},\nauthor=\"Mizutani, Iori\",\n}",
+		nil,
 		`@misc{mizutani2021misc,
     title       = {{Title of the Resource}},
     author      = "Mizutani, Iori",
@@ -201,6 +208,7 @@ var bibtests = []struct {
 `,
 	}, {
 		"@phdthesis{mizutani2021phdthesis,\ntitle={{Title of the Ph.D. Thesis}},\n}",
+		nil,
 		`@phdthesis{mizutani2021phdthesis,
     title       = {{Title of the Ph.D. Thesis}},
     author      = "(TODO)",
@@ -228,6 +236,7 @@ var bibtests = []struct {
 `,
 	}, {
 		"@techreport{mizutani2021techreport,\ntitle={{Title of the Technical Document}},\nauthor=\"Mizutani, Iori\",\n}",
+		nil,
 		`@techreport{mizutani2021techreport,
     title       = {{Title of the Technical Document}},
     author      = "Mizutani, Iori",
@@ -255,6 +264,7 @@ var bibtests = []struct {
 `,
 	}, {
 		"@unpublished{mizutani2021unpublished,\ntitle={{Title of the Unpublished Work}},\nauthor=\"Mizutani, Iori\",\n}",
+		nil,
 		`@unpublished{mizutani2021unpublished,
     title       = {{Title of the Unpublished Work}},
     author      = "Mizutani, Iori",
@@ -291,7 +301,10 @@ func TestBuildBibItem(t *testing.T) {
 			t.Error(err)
 		}
 		entry := parsed.Entries[0]
-		bi := filters.BuildBibItem(entry)
+		bi, err := filters.BuildBibItem(entry)
+		if err != nil && tt.err.Error() != err.Error() {
+			t.Errorf("BuildBibItem() err => %v\n, want %v", err, tt.err)
+		}
 		entry = bi.ToBibEntry()
 		bt := bibtex.NewBibTex()
 		bt.AddEntry(entry)

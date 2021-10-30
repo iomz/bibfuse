@@ -1,7 +1,6 @@
 package bibfuse
 
 import (
-	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -13,24 +12,28 @@ type Author struct {
 	LastName  string `default:"" sqlite3:"last_name"`
 }
 
+// BackslashCleaner minimizes sequences of backslashes
+func BackslashCleaner(line string) string {
+	multiBackSlash := regexp.MustCompile(`\\+`)
+	return multiBackSlash.ReplaceAllString(line, `\`)
+}
+
 // FirstNameCleaner returns a cleaned-up first name
 func FirstNameCleaner(firstName string) (string, error) {
-	match, _ := regexp.MatchString(`\b[A-ZÀ-Ú]{1}([^\.A-Za-zÀ-ÖØ-öø-ÿ]|\z)`, firstName)
-	fmt.Println(match)
+	match, _ := regexp.MatchString(`\b[A-ZÀ-Ú]{1}([^\.A-Za-zÀ-ÖØ-öø-ÿ{}()]|\z)`, firstName)
 	if match {
-		return "", errors.New("no dot in abbreviation")
+		return "", fmt.Errorf("no dot in abbreviation: %v", firstName)
 	}
-	return firstName, nil
+	return BackslashCleaner(firstName), nil
 }
 
 // LastNameCleaner returns a cleaned-up first name
 func LastNameCleaner(lastName string) (string, error) {
 	match, _ := regexp.MatchString(`\A[A-ZÀ-Ú]{1}\.\z`, lastName)
-	fmt.Println(match)
 	if match {
-		return "", errors.New("last name should not be abbreviated")
+		return "", fmt.Errorf("last name should not be abbreviated: %v", lastName)
 	}
-	return lastName, nil
+	return BackslashCleaner(lastName), nil
 }
 
 // NewAuthor returns a new Author
@@ -56,7 +59,7 @@ type Authors []*Author
 func NewAuthors(authorFieldValue string) (Authors, error) {
 	var authors Authors
 
-	rawAuthorsStringSlice := strings.Split(authorFieldValue, "and")
+	rawAuthorsStringSlice := strings.Split(authorFieldValue, " and ")
 	for _, rawAuthorString := range rawAuthorsStringSlice {
 		authorNames := strings.Split(rawAuthorString, ",")
 		a := new(Author)
@@ -71,10 +74,10 @@ func NewAuthors(authorFieldValue string) (Authors, error) {
 				strings.TrimSpace(authorNames[0]),
 			)
 		default:
-			err = errors.New("too many comma")
+			err = fmt.Errorf("too many comma")
 		}
 		if err != nil {
-			return authors, err
+			return authors, fmt.Errorf("%w %v", err, rawAuthorString)
 		}
 
 		authors = append(authors, a)
