@@ -167,17 +167,18 @@ func (fs Filters) BuildBibItem(entry *bibtex.BibEntry, smart bool, oneofs Oneofs
 		}
 	}
 
+	// smart mode: use oneof_ filters to discard unecessary fields
 	if smart && oneofs.HasOneof(entry.Type) {
 		for _, of := range *(oneofs[entry.Type]) {
 			keep := true
 			for _, f := range of {
 				for k, v := range bi.AllFields(ByBibTexName) {
-					if !keep {
-						if f == k {
+					if f == k {
+						if !keep {
 							bi.SetFieldByBibTexName(k, "")
+						} else if v != "" && v != "(TODO)" && v != "(OPTIONAL)" {
+							keep = false
 						}
-					} else if f == k && v != "(OPTIONAL)" {
-						keep = false
 					}
 				}
 			}

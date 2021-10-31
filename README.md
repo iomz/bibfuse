@@ -15,6 +15,37 @@ The filtering formats can be defined in the config file (`--config`). bibfuse ta
 
 If no `.bib` files are given, it just reads the database and updates the BibTex file.
 
+# Table of Contents
+
+* [Synopsis](#synopsis)
+  * [Usage](#usage)
+  * [Usage with Docker](#docker)
+* [bibfuse filters for BibTex format](#filters)
+  * [`todos` and `optionals` filters](#todo-optional)
+  * [`oneof_` filters with `-smart`](#oneof)
+  * [Citation Types](#cite-type)
+    * [@article](#article)
+    * [@book](#book)
+    * [@incollection](#incollection)
+    * [@inproceedings](#inproceedings)
+    * [@mastersthesis](#mastersthesis)
+    * [@misc](#misc)
+    * [@phdthesis](#phdthesis)
+    * [@techreport](#techreport)
+    * [@unpublished](#unpublished)
+* [Contribution](#contribution)
+* [License](#license)
+* [Author](#author)
+
+# Synopsis <a name="synopsis"/>
+
+## Install <a name="install"/>
+```console
+% go get -u github.com/iomz/bibfuse/...
+```
+
+## Usage <a name="usage"/>
+
 ```console
 % bibfuse -h
 Usage of bibfuse: [options] [.bib ... .bib]
@@ -30,20 +61,15 @@ Usage of bibfuse: [options] [.bib ... .bib]
         The resulting bibtex to write (it overrides if exists). (default "out.bib")
   -show-empty
         Do not hide empty fields in the resulting bibtex.
+  -smart
+        Use oneof selectively filters when importing bibtex.
   -verbose
         Print verbose messages.
   -version
         Print version.
 ```
 
-# Synopsis
-
-## Install
-```console
-% go get -u github.com/iomz/bibfuse/...
-```
-
-## Usage
+### Example
 ```console
 % cat ref.bib
 @article{someone2021a,
@@ -73,7 +99,7 @@ Usage of bibfuse: [options] [.bib ... .bib]
 }
 ```
 
-## Usage with Docker
+## Usage with Docker <a name="docker"/>
 ```console
 % cat ref.bib
 @article{someone2021a,
@@ -88,89 +114,109 @@ Usage of bibfuse: [options] [.bib ... .bib]
 1|someone2021a|article|(TODO)|{A Journal Article}||(OPTIONAL)||(OPTIONAL)|(OPTIONAL)||(TODO)|(OPTIONAL)||(OPTIONAL)||(OPTIONAL)|(OPTIONAL)|(OPTIONAL)|(OPTIONAL)||||(OPTIONAL)||(OPTIONAL)|(TODO)
 ```
 
-# BibTex entry format
-bibfuse reflects rather subjective opinion to filter and flag the required fields depending on the typem aiming for the compatibility with most of the research publication requirements.
+# bibfuse filters for BibTex format <a name="filters"/>
+bibfuse reflects rather subjective opinion to filter and flag the required fields depending on the type, aiming for the compatibility with most of the research publication requirements.
+
+## `todos` and `optionals` filters <a name="todo-optional"/>
 
 bibfuse filters fields for each entry depending on the type: `@article`, `@book`, `@incollection`, `@inproceedings`, `@mastersthesis`, `@misc`, `@phdthesis`, `@techreport`, and `@unpublished` as defined in `bibfuse.toml`.
 
 Mandatory fields are filled with `(TODO)` while optional fileds are filled with `(OPTIONAL)`.
 
-## Journal articles
+## `oneof_` filters with `-smart` <a name="oneof"/>
+
+In addition, you can define additional filters whose name starting with `oneof_` to selectively _discard_ some fields in presence of a specific fields with the `-smart` option. For example, by default for the `@article` type the default `bibfuse.toml` has the following `oneof_` filter:
+
+```toml
+oneof_doi_page = [
+    "doi",
+    "pages",
+    "numpages"
+]
 ```
+
+This checks each field in the order "doi", "pages", and "numpages" then after finding the first one of neither empty, "(OPTIONAL)", nor "(TODO)", bibfuse discards the remaining fields and does _NOT_ store them in the database. Note that if you want to retain those fields, you should not use this `-smart` option.
+
+This feature enables rather concise bibliography in your manuscript while maintaining the accessibility to the cited documents through more efficient identities (e.g., DOI).
+
+## Citation Types <a name="cite-type"/>
+
+### Journal articles <a name="article"/>
+```latex
 @article{mizutani2021article
     title     = {{Title of the Article}},
     author    = "(TODO)",
     journal   = "(TODO)",
     year      = "(TODO)",
     doi       = "(OPTIONAL)",
-    isbn      = "(OPTIONAL)",
-    issn      = "(OPTIONAL)",
+    isbn      = "(OPTIONAL)", % removed if doi exists
+    issn      = "(OPTIONAL)", % removed if doi exists
     metanote  = "(OPTIONAL)",
-    number    = "(OPTIONAL)",
-    numpages  = "(OPTIONAL)",
-    pages     = "(OPTIONAL)",
-    publisher = "(OPTIONAL)",
-    url       = "(OPTIONAL)",
-    volume    = "(OPTIONAL)",
+    number    = "(OPTIONAL)", % removed if doi exists
+    numpages  = "(OPTIONAL)", % removed if doi exists
+    pages     = "(OPTIONAL)", % removed if doi exists
+    publisher = "(OPTIONAL)", % removed if doi exists
+    url       = "(OPTIONAL)", % removed if doi exists
+    volume    = "(OPTIONAL)", % removed if doi exists
 }
 ```
 
-## Books
-```
+### Books <a name="book"/>
+```latex
 @book{mizutani2021book,
     title     = {{Title of the Book}},
     author    = "(TODO)"
-    publisher = "(TODO)",
+    publisher = "(TODO)",     % removed if doi exists
     year      = "(TODO)",
     doi       = "(OPTIONAL)",
-    edition   = "(OPTIONAL)",
-    isbn      = "(OPTIONAL)",
-    issn      = "(OPTIONAL)",
+    edition   = "(OPTIONAL)", % removed if doi exists
+    isbn      = "(OPTIONAL)", % removed if doi exists
+    issn      = "(OPTIONAL)", % removed if doi exists
     metanote  = "(OPTIONAL)",
-    url       = "(OPTIONAL)",
+    url       = "(OPTIONAL)", % removed if doi exists
 }
 ```
 
-## Chapters or articles in a book
-```
+### Chapters or articles in a book <a name="incollection"/>
+```latex
 @incollection{mizutani2012incollection,
     title     = {{Title of the Book Chapter}},
     author    = "(TODO)"
     booktitle = "(TODO)",
-    publisher = "(TODO)",
+    publisher = "(TODO)",     % removed if doi exists
     year      = "(TODO)",
-    url       = "(OPTIONAL)",
     doi       = "(OPTIONAL)",
-    isbn      = "(OPTIONAL)",
-    issn      = "(OPTIONAL)",
+    isbn      = "(OPTIONAL)", % removed if doi exists
+    issn      = "(OPTIONAL)", % removed if doi exists
     metanote  = "(OPTIONAL)",
-    numpages  = "(OPTIONAL)",
-    pages     = "(OPTIONAL)",
+    numpages  = "(OPTIONAL)", % removed if doi exists
+    pages     = "(OPTIONAL)", % removed if doi exists
     series    = "(OPTIONAL)",
+    url       = "(OPTIONAL)", % removed if doi exists
 }
 ```
 
-## Conference papers, lecture notes, extended abstract, etc.
-```
+### Conference papers, lecture notes, extended abstract, etc. <a name="inproceedings"/>
+```latex
 @inproceedings{mizutani2012inproceedings,
     title     = {{Title of the Conference Paper}},
     author    = "(TODO)"
     booktitle = "(TODO)",
     year      = "(TODO)",
     doi       = "(OPTIONAL)",
-    isbn      = "(OPTIONAL)",
-    issn      = "(OPTIONAL)",
+    isbn      = "(OPTIONAL)", % removed if doi exists
+    issn      = "(OPTIONAL)", % removed if doi exists
     metanote  = "(OPTIONAL)",
-    numpages  = "(OPTIONAL)",
-    pages     = "(OPTIONAL)",
-    publisher = "(OPTIONAL)",
+    numpages  = "(OPTIONAL)", % removed if doi exists
+    pages     = "(OPTIONAL)", % removed if doi exists
+    publisher = "(OPTIONAL)", % removed if doi exists
     series    = "(OPTIONAL)",
-    url       = "(OPTIONAL)",
+    url       = "(OPTIONAL)", % removed if doi exists
 }
 ```
 
-## Master's theses
-```
+### Master's theses <a name="mastersthesis"/>
+```latex
 @mastersthesis{mizutani2021mastersthesis,
     title       = {{Title of the Master's Thesis}},
     author      = "(TODO)",
@@ -182,8 +228,8 @@ Mandatory fields are filled with `(TODO)` while optional fileds are filled with 
 
 ```
 
-## Online resources, artifacts, etc.
-```
+### Online resources, artifacts, etc. <a name="misc"/>
+```latex
 @misc{mizutani2021misc,
     title       = "Title of the Resource",
     author      = "(TODO)"
@@ -195,8 +241,8 @@ Mandatory fields are filled with `(TODO)` while optional fileds are filled with 
 }
 ```
 
-## Ph.D. theses / dissertations
-```
+### Ph.D. theses / dissertations <a name="phdthesis"/>
+```latex
 @phdthesis{mizutani2021phdthesis,
     title       = {{Title of the Ph.D. Thesis}},
     author      = "(TODO)",
@@ -207,8 +253,8 @@ Mandatory fields are filled with `(TODO)` while optional fileds are filled with 
 }
 ```
 
-## Standards, specifications, white papers, etc.
-```
+### Standards, specifications, white papers, etc. <a name="techreport"/>
+```latex
 @techreport{mizutani2021techreport,
     title       = {{Title of the Technical Document}},
     author      = "(TODO)",
@@ -221,8 +267,8 @@ Mandatory fields are filled with `(TODO)` while optional fileds are filled with 
 }
 ```
 
-## Documents not formally published.
-```
+### Documents not formally published. <a name="unpublished"/>
+```latex
 @unpublished{mizutani2021unpublished,
     title       = {{Title of the Unpublished Work}},
     author      = "(TODO)",
@@ -232,11 +278,11 @@ Mandatory fields are filled with `(TODO)` while optional fileds are filled with 
 }
 ```
 
-# Contribution
+# Contribution <a name="contribution"/>
 See `CONTRIBUTING.md`.
 
-# License
+# License <a name="license"/>
 See `LICENSE`.
 
-# Author
+# Author <a name="author"/>
 Iori Mizutani ([@iomz](https://github.com/iomz))
