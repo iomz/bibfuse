@@ -2,6 +2,7 @@ package bibfuse
 
 import (
 	"bufio"
+	"errors"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -34,12 +35,16 @@ func TestAllFields(t *testing.T) {
 }
 
 var bibtests = []struct {
-	in  string
-	err error
-	out string
+	in     string
+	smart  bool
+	oneofs Oneofs
+	err    error
+	out    string
 }{
 	{
 		"@article{mizutani2021article,\ntitle={{Title of the Article}},\nauthor=\"Mizutani, Iori\",\n}",
+		false,
+		Oneofs{},
 		nil,
 		`@article{mizutani2021article,
     title       = {{Title of the Article}},
@@ -68,6 +73,8 @@ var bibtests = []struct {
 `,
 	}, {
 		"@book{mizutani2021book,\ntitle={{Title of the Book}},\nauthor=\"Mizutani, Iori\",\n}",
+		false,
+		Oneofs{},
 		nil,
 		`@book{mizutani2021book,
     title       = {{Title of the Book}},
@@ -96,6 +103,8 @@ var bibtests = []struct {
 `,
 	}, {
 		"@incollection{mizutani2021incollection,\ntitle={{Title of the Book Chapter}},\nauthor=\"Mizutani, Iori\",\n}",
+		false,
+		Oneofs{},
 		nil,
 		`@incollection{mizutani2021incollection,
     title       = {{Title of the Book Chapter}},
@@ -124,6 +133,8 @@ var bibtests = []struct {
 `,
 	}, {
 		"@inproceedings{mizutani2021inproceedings,\ntitle={{Title of the Conference Paper}},\nauthor=\"Mizutani, Iori\",\n}",
+		false,
+		Oneofs{},
 		nil,
 		`@inproceedings{mizutani2021inproceedings,
     title       = {{Title of the Conference Paper}},
@@ -152,6 +163,8 @@ var bibtests = []struct {
 `,
 	}, {
 		"@mastersthesis{mizutani2021mastersthesis,\ntitle={{Title of the Master's Thesis}},\n}",
+		false,
+		Oneofs{},
 		nil,
 		`@mastersthesis{mizutani2021mastersthesis,
     title       = {{Title of the Master's Thesis}},
@@ -180,6 +193,8 @@ var bibtests = []struct {
 `,
 	}, {
 		"@misc{mizutani2021misc,\ntitle={{Title of the Resource}},\nauthor=\"Mizutani, Iori\",\n}",
+		false,
+		Oneofs{},
 		nil,
 		`@misc{mizutani2021misc,
     title       = {{Title of the Resource}},
@@ -208,6 +223,8 @@ var bibtests = []struct {
 `,
 	}, {
 		"@phdthesis{mizutani2021phdthesis,\ntitle={{Title of the Ph.D. Thesis}},\n}",
+		false,
+		Oneofs{},
 		nil,
 		`@phdthesis{mizutani2021phdthesis,
     title       = {{Title of the Ph.D. Thesis}},
@@ -236,6 +253,8 @@ var bibtests = []struct {
 `,
 	}, {
 		"@techreport{mizutani2021techreport,\ntitle={{Title of the Technical Document}},\nauthor=\"Mizutani, Iori\",\n}",
+		false,
+		Oneofs{},
 		nil,
 		`@techreport{mizutani2021techreport,
     title       = {{Title of the Technical Document}},
@@ -264,6 +283,8 @@ var bibtests = []struct {
 `,
 	}, {
 		"@unpublished{mizutani2021unpublished,\ntitle={{Title of the Unpublished Work}},\nauthor=\"Mizutani, Iori\",\n}",
+		false,
+		Oneofs{},
 		nil,
 		`@unpublished{mizutani2021unpublished,
     title       = {{Title of the Unpublished Work}},
@@ -290,6 +311,51 @@ var bibtests = []struct {
     year        = "",
 }
 `,
+	}, {
+		"@article{mizutani2021article,\ntitle={{Title of the Article}},\nauthor=\"Mizutani, Iori\",\ndoi={xxxxx/xxxxx.xxx.xx},\nisbn={978-3-16-148410-0},\nissn={2049-3630},\nnumber=1,\nnumpages=350,\npages={1--350},\nvolume=1,\n}",
+		true,
+		Oneofs{"article": &Oneof{
+			[]string{"doi", "pages", "numpages"},
+			[]string{"doi", "isbn"},
+			[]string{"doi", "issn"},
+			[]string{"doi", "number"},
+			[]string{"doi", "publisher"},
+			[]string{"doi", "volume"},
+			[]string{"doi", "url"},
+		}},
+		nil,
+		`@article{mizutani2021article,
+    title       = {{Title of the Article}},
+    author      = "Mizutani, Iori",
+    url         = "",
+    booktitle   = "",
+    doi         = "xxxxx/xxxxx.xxx.xx",
+    edition     = "",
+    institution = "",
+    isbn        = "",
+    issn        = "",
+    journal     = "(TODO)",
+    metanote    = "(OPTIONAL)",
+    note        = "",
+    number      = "",
+    numpages    = "",
+    pages       = "",
+    publisher   = "",
+    school      = "",
+    series      = "",
+    type        = "",
+    version     = "",
+    volume      = "",
+    year        = "(TODO)",
+}
+`,
+	}, {
+		"@article{mizutani2021article,\ntitle={{Title of the Article}},\nauthor=\"M., Iori\",\n}",
+		false,
+		Oneofs{},
+		errors.New("last name should not be abbreviated"),
+		`
+`,
 	},
 }
 
@@ -301,9 +367,12 @@ func TestBuildBibItem(t *testing.T) {
 			t.Error(err)
 		}
 		entry := parsed.Entries[0]
-		bi, err := filters.BuildBibItem(entry)
-		if err != nil && tt.err.Error() != err.Error() {
-			t.Errorf("BuildBibItem() err => %v\n, want %v", err, tt.err)
+		bi, err := filters.BuildBibItem(entry, tt.smart, tt.oneofs)
+		if err != nil {
+			if !strings.Contains(err.Error(), tt.err.Error()) {
+				t.Errorf("BuildBibItem() err => %v\n, want %v", err, tt.err)
+			}
+			continue
 		}
 		entry = bi.ToBibEntry()
 		bt := bibtex.NewBibTex()
@@ -393,6 +462,23 @@ func TestToBibEntry(t *testing.T) {
 		if result != tt.out {
 			t.Errorf("bt.PrettyString => \n%v, want \n%v", result, tt.out)
 		}
+	}
+}
+
+func TestFilterHasField(t *testing.T) {
+	f := NewFilter()
+	ok := f.HasField("article", "todos")
+	if ok {
+		t.Errorf("f.HasFilter => %v, want false", ok)
+	}
+}
+
+func TestOneof(t *testing.T) {
+	of := NewOneof()
+	of.AddOneof([]string{"doi", "url"})
+	test := &Oneof{[]string{"doi", "url"}}
+	if !reflect.DeepEqual(of, test) {
+		t.Errorf("Oneof => %v, want %v", of, test)
 	}
 }
 

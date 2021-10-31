@@ -139,7 +139,7 @@ func (fs Filters) HasFilter(filterType string) bool {
 }
 
 // BuildBibItem returns BibItem with the filter
-func (fs Filters) BuildBibItem(entry *bibtex.BibEntry) (BibItem, error) {
+func (fs Filters) BuildBibItem(entry *bibtex.BibEntry, smart bool, oneofs Oneofs) (BibItem, error) {
 	bi := NewBibItem()
 	bi.CiteName = entry.CiteName
 	bi.CiteType = entry.Type
@@ -167,5 +167,45 @@ func (fs Filters) BuildBibItem(entry *bibtex.BibEntry) (BibItem, error) {
 		}
 	}
 
+	// smart mode: use oneof_ filters to discard unecessary fields
+	if smart && oneofs.HasOneof(entry.Type) {
+		for _, of := range *(oneofs[entry.Type]) {
+			keep := true
+			for _, f := range of {
+				for k, v := range bi.AllFields(ByBibTexName) {
+					if f == k {
+						if !keep {
+							bi.SetFieldByBibTexName(k, "")
+						} else if v != "" && v != "(TODO)" && v != "(OPTIONAL)" {
+							keep = false
+						}
+					}
+				}
+			}
+		}
+	}
+
 	return bi, nil
+}
+
+// Oneof defines the one of the fields
+type Oneof [][]string
+
+// AddOneof adds a oneof fields
+func (of *Oneof) AddOneof(fields []string) {
+	*of = append(*of, fields)
+}
+
+// NewOneof initialize a Oneof
+func NewOneof() *Oneof {
+	return &Oneof{}
+}
+
+// Oneofs is a oneof map for each citeType
+type Oneofs map[string]*Oneof
+
+// HasOneof checks if the filter of a citation type exists
+func (os Oneofs) HasOneof(citeType string) bool {
+	_, ok := os[citeType]
+	return ok
 }
