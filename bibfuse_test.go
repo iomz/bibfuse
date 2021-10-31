@@ -2,6 +2,7 @@ package bibfuse
 
 import (
 	"bufio"
+	"errors"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -348,6 +349,13 @@ var bibtests = []struct {
     year        = "(TODO)",
 }
 `,
+	}, {
+		"@article{mizutani2021article,\ntitle={{Title of the Article}},\nauthor=\"M., Iori\",\n}",
+		false,
+		Oneofs{},
+		errors.New("last name should not be abbreviated"),
+		`
+`,
 	},
 }
 
@@ -360,8 +368,11 @@ func TestBuildBibItem(t *testing.T) {
 		}
 		entry := parsed.Entries[0]
 		bi, err := filters.BuildBibItem(entry, tt.smart, tt.oneofs)
-		if err != nil && tt.err.Error() != err.Error() {
-			t.Errorf("BuildBibItem() err => %v\n, want %v", err, tt.err)
+		if err != nil {
+			if !strings.Contains(err.Error(), tt.err.Error()) {
+				t.Errorf("BuildBibItem() err => %v\n, want %v", err, tt.err)
+			}
+			continue
 		}
 		entry = bi.ToBibEntry()
 		bt := bibtex.NewBibTex()
@@ -451,6 +462,23 @@ func TestToBibEntry(t *testing.T) {
 		if result != tt.out {
 			t.Errorf("bt.PrettyString => \n%v, want \n%v", result, tt.out)
 		}
+	}
+}
+
+func TestFilterHasField(t *testing.T) {
+	f := NewFilter()
+	ok := f.HasField("article", "todos")
+	if ok {
+		t.Errorf("f.HasFilter => %v, want false", ok)
+	}
+}
+
+func TestOneof(t *testing.T) {
+	of := NewOneof()
+	of.AddOneof([]string{"doi", "url"})
+	test := &Oneof{[]string{"doi", "url"}}
+	if !reflect.DeepEqual(of, test) {
+		t.Errorf("Oneof => %v, want %v", of, test)
 	}
 }
 
