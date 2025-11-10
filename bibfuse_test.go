@@ -482,6 +482,45 @@ func TestOneof(t *testing.T) {
 	}
 }
 
+func TestFieldValueByBibTexName(t *testing.T) {
+	bi := NewBibItem()
+	if err := bi.SetFieldByBibTexName("title", "Example Title"); err != nil {
+		t.Fatalf("SetFieldByBibTexName() err => %v, want nil", err)
+	}
+
+	val, ok := bi.FieldValueByBibTexName("title")
+	if !ok {
+		t.Fatalf("FieldValueByBibTexName() ok => %v, want true", ok)
+	}
+	if val != "Example Title" {
+		t.Fatalf("FieldValueByBibTexName() => %v, want %v", val, "Example Title")
+	}
+
+	if _, ok := bi.FieldValueByBibTexName("unknown"); ok {
+		t.Fatalf("FieldValueByBibTexName() ok => %v, want false", ok)
+	}
+}
+
+func TestFiltersFilterFor(t *testing.T) {
+	defaultFilter := Filter{"todos": []string{"title"}}
+	customFilter := Filter{"todos": []string{"author"}}
+	filters := Filters{
+		"default": defaultFilter,
+		"article": customFilter,
+	}
+
+	if got := filters.filterFor("article"); !reflect.DeepEqual(got, customFilter) {
+		t.Fatalf("filterFor(\"article\") => %v, want %v", got, customFilter)
+	}
+	if got := filters.filterFor("book"); !reflect.DeepEqual(got, defaultFilter) {
+		t.Fatalf("filterFor(\"book\") => %v, want %v", got, defaultFilter)
+	}
+	empty := (Filters{}).filterFor("unknown")
+	if empty == nil || len(empty) != 0 {
+		t.Fatalf("filterFor on empty filters => %v, want empty Filter", empty)
+	}
+}
+
 // bibEntryEqual compares 2 bib entries
 func bibEntryEqual(t *testing.T, from, to string) bool {
 	fromScanner := bufio.NewScanner(strings.NewReader(from))
