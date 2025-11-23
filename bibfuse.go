@@ -1,7 +1,6 @@
 package bibfuse
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 
@@ -48,21 +47,19 @@ type BibItem struct {
 
 // AllFields returns a string map of all the fileds
 func (bi BibItem) AllFields(bio BibItemOption) map[string]string {
-	fieldMap := make(map[string]string)
+	fieldMap := make(map[string]string, len(bibItemFieldMetas))
+	value := reflect.ValueOf(bi)
 	switch bio {
 	case ByBibTexName:
-		v := reflect.ValueOf(&bi).Elem()
-		t := v.Type()
-		for i := 0; i < t.NumField(); i++ {
-			if fieldName := t.Field(i).Tag.Get("bibtex"); fieldName != "-" {
-				fieldMap[fieldName] = v.Field(i).String()
+		for _, meta := range bibItemFieldMetas {
+			if !meta.hasBibtex {
+				continue
 			}
+			fieldMap[meta.bibtexName] = meta.valueFrom(value)
 		}
-	case ByFieldName:
-		v := reflect.ValueOf(bi)
-		t := v.Type()
-		for i := 0; i < v.NumField(); i++ {
-			fieldMap[t.Field(i).Name] = v.Field(i).String()
+	default:
+		for _, meta := range bibItemFieldMetas {
+			fieldMap[meta.fieldName] = meta.valueFrom(value)
 		}
 	}
 	return fieldMap
@@ -70,16 +67,21 @@ func (bi BibItem) AllFields(bio BibItemOption) map[string]string {
 
 // SetFieldByBibTexName update the field value specified by bibtex field name
 func (bi *BibItem) SetFieldByBibTexName(fieldName, fieldValue string) error {
-	v := reflect.ValueOf(bi).Elem()
-	t := v.Type()
-	for i := 0; i < t.NumField(); i++ {
-		if fieldName == t.Field(i).Tag.Get("bibtex") {
-			field := v.Field(i)
-			field.Set(reflect.ValueOf(fieldValue).Convert(field.Type()))
-			return nil
-		}
+	metaIndex, ok := bibItemBibtexIndex[fieldName]
+	if !ok {
+		return fmt.Errorf("SetFieldByBibTexName: no such field %q", fieldName)
 	}
-	return errors.New("SetFieldByBibTexName: no such field")
+	bibItemFieldMetas[metaIndex].setString(bi, fieldValue)
+	return nil
+}
+
+// FieldValueByBibTexName returns the field value specified by bibtex field name.
+func (bi BibItem) FieldValueByBibTexName(fieldName string) (string, bool) {
+	metaIndex, ok := bibItemBibtexIndex[fieldName]
+	if !ok {
+		return "", false
+	}
+	return bibItemFieldMetas[metaIndex].valueFrom(reflect.ValueOf(bi)), true
 }
 
 // ToBibEntry creates a new bibtex.BibEntry from BibItem and return the pointer
@@ -96,13 +98,11 @@ func (bi BibItem) ToBibEntry() *bibtex.BibEntry {
 // NewBibItem returns a BibItem with default field value
 func NewBibItem() BibItem {
 	bi := BibItem{}
-	v := reflect.ValueOf(&bi).Elem()
-	t := v.Type()
-	for i := 0; i < t.NumField(); i++ {
-		if defaultVal := t.Field(i).Tag.Get("default"); defaultVal != "-" {
-			field := v.Field(i).String()
-			bi.SetFieldByBibTexName(field, defaultVal)
+	for _, meta := range bibItemFieldMetas {
+		if !meta.hasDefault {
+			continue
 		}
+		meta.setString(&bi, meta.defaultVal)
 	}
 	return bi
 }
@@ -138,6 +138,16 @@ func (fs Filters) HasFilter(filterType string) bool {
 	return ok
 }
 
+func (fs Filters) filterFor(citeType string) Filter {
+	if filter, ok := fs[citeType]; ok {
+		return filter
+	}
+	if filter, ok := fs["default"]; ok {
+		return filter
+	}
+	return Filter{}
+}
+
 // BuildBibItem returns BibItem with the filter
 func (fs Filters) BuildBibItem(entry *bibtex.BibEntry, smart bool, oneofs Oneofs) (BibItem, error) {
 	bi := NewBibItem()
@@ -151,36 +161,48 @@ func (fs Filters) BuildBibItem(entry *bibtex.BibEntry, smart bool, oneofs Oneofs
 			if err != nil {
 				return bi, fmt.Errorf("[%v] %w", bi.CiteName, err)
 			}
-			bi.SetFieldByBibTexName(k, authors.String())
+			_ = bi.SetFieldByBibTexName(k, authors.String())
 		default:
-			bi.SetFieldByBibTexName(k, v.String())
+			_ = bi.SetFieldByBibTexName(k, v.String())
 		}
 	}
 
-	for k, v := range bi.AllFields(ByBibTexName) {
-		if v == "" {
-			if fs[entry.Type].HasField("todos", k) {
-				bi.SetFieldByBibTexName(k, "(TODO)")
-			} else if fs[entry.Type].HasField("optionals", k) {
-				bi.SetFieldByBibTexName(k, "(OPTIONAL)")
-			}
+	filter := fs.filterFor(entry.Type)
+
+	for _, fieldName := range filter["todos"] {
+		if value, ok := bi.FieldValueByBibTexName(fieldName); ok && value == "" {
+			_ = bi.SetFieldByBibTexName(fieldName, "(TODO)")
+		}
+	}
+	for _, fieldName := range filter["optionals"] {
+		if value, ok := bi.FieldValueByBibTexName(fieldName); ok && value == "" {
+			_ = bi.SetFieldByBibTexName(fieldName, "(OPTIONAL)")
 		}
 	}
 
-	// smart mode: use oneof_ filters to discard unecessary fields
+	// smart mode: use oneof_ filters to discard unnecessary fields
 	if smart && oneofs.HasOneof(entry.Type) {
 		for _, of := range *(oneofs[entry.Type]) {
-			keep := true
-			for _, f := range of {
-				for k, v := range bi.AllFields(ByBibTexName) {
-					if f == k {
-						if !keep {
-							bi.SetFieldByBibTexName(k, "")
-						} else if v != "" && v != "(TODO)" && v != "(OPTIONAL)" {
-							keep = false
-						}
-					}
+			var keep string
+			for _, fieldName := range of {
+				value, ok := bi.FieldValueByBibTexName(fieldName)
+				if !ok {
+					continue
 				}
+				if value == "" || value == "(TODO)" || value == "(OPTIONAL)" {
+					continue
+				}
+				keep = fieldName
+				break
+			}
+			if keep == "" {
+				continue
+			}
+			for _, fieldName := range of {
+				if fieldName == keep {
+					continue
+				}
+				_ = bi.SetFieldByBibTexName(fieldName, "")
 			}
 		}
 	}

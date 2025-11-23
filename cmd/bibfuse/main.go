@@ -18,14 +18,20 @@ import (
 	"github.com/spf13/viper"
 )
 
-// createDB creates the db if not exists
-func createDB(dbPath string) (*sql.DB, error) {
-	db, err := sql.Open("sqlite3", dbPath)
-	if err != nil {
-		return nil, err
-	}
-	_, err = db.Exec(
-		`CREATE TABLE IF NOT EXISTS entries(
+const (
+	defaultConfigFile = "bibfuse.toml"
+	defaultDBFile     = "bib.db"
+	defaultOutFile    = "out.bib"
+)
+
+var (
+	optionalLineRE = regexp.MustCompile("(?m)[\r\n]+^.*(OPTIONAL).*$")
+	todoLineRE     = regexp.MustCompile("(?m)[\r\n]+^.*(TODO).*$")
+	emptyLineRE    = regexp.MustCompile("(?m)[\r\n]+^.*\"\".*$")
+)
+
+const (
+	createTableSQL = `CREATE TABLE IF NOT EXISTS entries(
             id INTEGER PRIMARY KEY,
             cite_name TEXT UNIQUE NOT NULL,
             cite_type TEXT NOT NULL,
@@ -51,196 +57,320 @@ func createDB(dbPath string) (*sql.DB, error) {
             version TEXT DEFAULT "",
             volume TEXT DEFAULT "",
             year TEXT
-        );`,
-	)
-	return db, err
-}
+        );`
+	insertEntrySQL = `INSERT OR IGNORE INTO entries (
+            cite_name, cite_type, title, author, booktitle, doi, edition, isbn, issn,
+            institution, journal, metanote, note, number, numpages, pages, publisher,
+            school, series, url, type, version, volume, year
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+)
 
-// writeToDB write the BibEntry to the sqlite3 database
-func writeToDB(db *sql.DB, bi bibfuse.BibItem) (*sql.Stmt, sql.Result, error) {
-	var stmt *sql.Stmt
-	var res sql.Result
-
-	tx, err := db.Begin()
-	if err != nil {
-		return nil, nil, err
-	}
-	defer tx.Commit()
-
-	stmt, err = tx.Prepare("INSERT INTO entries (cite_name, cite_type, title, author, booktitle, doi, edition, isbn, issn, institution, journal, metanote, note, number, numpages, pages, publisher, school, series, url, type, volume, year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-	if err != nil {
-		log.Fatal(err)
-	}
-	res, err = stmt.Exec(bi.CiteName, bi.CiteType, bi.Title, bi.Author,
-		bi.Booktitle, bi.DOI, bi.Edition, bi.ISBN, bi.ISSN, bi.Institution, bi.Journal, bi.Metanote, bi.Note, bi.Number, bi.Numpages, bi.Pages, bi.Publisher, bi.School, bi.Series, bi.URL, bi.TechreportType, bi.Volume, bi.Year)
-	return stmt, res, err
+type options struct {
+	config           string
+	useDefaultConfig bool
+	dbFile           string
+	outFile          string
+	noOptional       bool
+	noTodo           bool
+	showEmpty        bool
+	smart            bool
+	verbose          bool
+	showVersion      bool
 }
 
 func main() {
-	conf := flag.String("config", "bibfuse.toml", "The bibfuse.[toml|yml] defining the filters.")
-	dbFile := flag.String("db", "bib.db", "The SQLite file to read/write.")
+	opts, files := parseFlags()
+	if opts.showVersion {
+		printVersion()
+		return
+	}
+	if err := run(opts, files); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func parseFlags() (options, []string) {
+	opts := options{}
+
+	conf := flag.String("config", defaultConfigFile, "The bibfuse.[toml|yml] defining the filters.")
+	dbFile := flag.String("db", defaultDBFile, "The SQLite file to read/write.")
 	noOption := flag.Bool("no-optional", false, "Suppress \"OPTIONAL\" fields in the resulting bibtex.")
 	noTodo := flag.Bool("no-todo", false, "Suppress \"TODO\" fields in the resulting bibtex.")
-	outFile := flag.String("out", "out.bib", "The resulting bibtex to write (it overrides if exists).")
+	outFile := flag.String("out", defaultOutFile, "The resulting bibtex to write (it overrides if exists).")
 	showEmpty := flag.Bool("show-empty", false, "Do not hide empty fields in the resulting bibtex.")
 	smart := flag.Bool("smart", false, "Use oneof selectively filters when importing bibtex.")
 	verbose := flag.Bool("verbose", false, "Print verbose messages.")
 	version := flag.Bool("version", false, "Print version.")
+
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s: [options] [.bib ... .bib]\n", os.Args[0])
 		flag.PrintDefaults()
 	}
-	flag.Parse()
-	files := flag.Args()
 
-	// print version
-	if *version {
-		bi, _ := debug.ReadBuildInfo()
-		fmt.Printf("%v\n", bi.Main.Version)
-		os.Exit(0)
+	flag.Parse()
+
+	opts.config = *conf
+	opts.useDefaultConfig = *conf == defaultConfigFile
+	opts.dbFile = *dbFile
+	opts.outFile = *outFile
+	opts.noOptional = *noOption
+	opts.noTodo = *noTodo
+	opts.showEmpty = *showEmpty
+	opts.smart = *smart
+	opts.verbose = *verbose
+	opts.showVersion = *version
+
+	return opts, flag.Args()
+}
+
+func printVersion() {
+	bi, _ := debug.ReadBuildInfo()
+	fmt.Printf("%v\n", bi.Main.Version)
+}
+
+func run(opts options, files []string) error {
+	if err := configureViper(opts); err != nil {
+		return err
 	}
 
-	// load config
-	if *conf != "bibfuse.toml" {
-		configPath, err := filepath.Abs(*conf)
+	filters, oneofs, err := loadRules()
+	if err != nil {
+		return err
+	}
+
+	dbPath := filepath.Join(".", opts.dbFile)
+	db, err := createDB(dbPath)
+	if err != nil {
+		return fmt.Errorf("table creation failed: %w", err)
+	}
+	defer db.Close()
+
+	newItemCount, err := importBibFiles(db, filters, oneofs, opts, files)
+	if err != nil {
+		return err
+	}
+	log.Printf("+%d new entries", newItemCount)
+
+	content, entryCount, err := exportBibliography(db, opts)
+	if err != nil {
+		return err
+	}
+	log.Printf("%s contains %d entries", dbPath, entryCount)
+
+	outPath := filepath.Join(".", opts.outFile)
+	if err := os.WriteFile(outPath, []byte(content), 0o644); err != nil {
+		return err
+	}
+	log.Printf("%d entries written to %s", entryCount, outPath)
+
+	return nil
+}
+
+func configureViper(opts options) error {
+	if !opts.useDefaultConfig {
+		configPath, err := filepath.Abs(opts.config)
 		if err != nil {
-			panic(err)
+			return err
 		}
 		viper.SetConfigFile(configPath)
-	} else {
-		viper.SetConfigName("bibfuse")
-		viper.AddConfigPath(".")
-		// add the path to the default config
-		_, filename, _, ok := runtime.Caller(0)
-		if !ok {
-			panic("no caller information")
-		}
-		viper.AddConfigPath(filepath.Join(filepath.Dir(filename), "../../"))
+		return nil
 	}
 
-	// read the config file
-	if err := viper.ReadInConfig(); err != nil { // handle errors reading the config file
-		log.Fatalf("config: %s \n", err)
+	viper.SetConfigName("bibfuse")
+	viper.AddConfigPath(".")
+
+	_, filename, _, ok := runtime.Caller(0)
+	if !ok {
+		return fmt.Errorf("no caller information")
+	}
+	viper.AddConfigPath(filepath.Join(filepath.Dir(filename), "../../"))
+	return nil
+}
+
+func loadRules() (bibfuse.Filters, bibfuse.Oneofs, error) {
+	if err := viper.ReadInConfig(); err != nil {
+		return nil, nil, fmt.Errorf("config: %w", err)
 	}
 
-	// load the filters and oneofs
 	filters := make(bibfuse.Filters)
 	oneofs := make(bibfuse.Oneofs)
+
 	for _, key := range viper.AllKeys() {
 		keys := strings.Split(key, ".")
+		if len(keys) < 2 {
+			continue
+		}
 		citeType, filterType := keys[0], keys[1]
-		if filterType == "todos" || filterType == "optionals" {
+		switch {
+		case filterType == "todos" || filterType == "optionals":
 			if !filters.HasFilter(citeType) {
 				filters[citeType] = bibfuse.NewFilter()
 			}
 			filters[citeType][filterType] = viper.GetStringSlice(key)
-		} else if strings.HasPrefix(filterType, "oneof_") {
+		case strings.HasPrefix(filterType, "oneof_"):
 			if !oneofs.HasOneof(citeType) {
 				oneofs[citeType] = bibfuse.NewOneof()
 			}
 			oneofs[citeType].AddOneof(viper.GetStringSlice(key))
 		}
 	}
+	return filters, oneofs, nil
+}
 
-	// create the db
-	dbPath := filepath.Join(".", *dbFile)
-	db, err := createDB(dbPath)
-	defer db.Close()
+func createDB(dbPath string) (*sql.DB, error) {
+	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
-		log.Fatalf("table creation failed: %q", err)
+		return nil, err
 	}
+	if _, err := db.Exec(createTableSQL); err != nil {
+		db.Close()
+		return nil, err
+	}
+	return db, nil
+}
 
-	// iterate the given files
+func importBibFiles(db *sql.DB, filters bibfuse.Filters, oneofs bibfuse.Oneofs, opts options, files []string) (int, error) {
 	newItemCount := 0
-	for _, f := range files {
-		filePath := filepath.Join(".", f)
-		log.Printf("parsing %v", filePath)
+	for _, fileName := range files {
+		filePath := filepath.Join(".", fileName)
+		log.Printf("parsing %s", filePath)
+
 		reader, err := os.Open(filePath)
 		if err != nil {
-			log.Fatal(err)
-		}
-		defer reader.Close()
-		parsed, err := bibtex.Parse(reader)
-		if err != nil {
-			log.Fatal(err)
+			return newItemCount, err
 		}
 
-		// inject each entry to the DB
+		parsed, err := bibtex.Parse(reader)
+		reader.Close()
+		if err != nil {
+			return newItemCount, err
+		}
+
 		for _, entry := range parsed.Entries {
-			bi, err := filters.BuildBibItem(entry, *smart, oneofs)
+			bi, err := filters.BuildBibItem(entry, opts.smart, oneofs)
 			if err != nil {
 				log.Println(err)
 				continue
 			}
-			stmt, res, err := writeToDB(db, bi)
-			if stmt != nil {
-				defer stmt.Close()
-			}
+
+			added, err := insertEntry(db, bi)
 			if err != nil {
-				if err.Error() == "UNIQUE constraint failed: entries.cite_name" {
-					if *verbose {
-						log.Printf("[%s] %q", entry.CiteName, err)
-					}
-				} else {
-					log.Fatalf("[%s] %q", entry.CiteName, err)
-				}
+				return newItemCount, fmt.Errorf("[%s] %w", entry.CiteName, err)
 			}
-			if res != nil {
+
+			if added {
 				newItemCount++
-				if *verbose {
+				if opts.verbose {
 					log.Printf("added %s", entry.CiteName)
 				}
+			} else if opts.verbose {
+				log.Printf("[%s] duplicate entry", entry.CiteName)
 			}
 		}
 	}
-	log.Printf("+%v new entries", newItemCount)
+	return newItemCount, nil
+}
 
-	// create a new BibTex to print
-	bib := bibtex.NewBibTex()
-	rows, err := db.Query("SELECT cite_name, cite_type, title, author, booktitle, doi, edition, isbn, issn, institution, journal, metanote, note, number, numpages, pages, publisher, school, series, type, url, version, volume, year FROM entries ORDER BY cite_name ASC")
+func insertEntry(db *sql.DB, bi bibfuse.BibItem) (bool, error) {
+	res, err := db.Exec(
+		insertEntrySQL,
+		bi.CiteName,
+		bi.CiteType,
+		bi.Title,
+		bi.Author,
+		bi.Booktitle,
+		bi.DOI,
+		bi.Edition,
+		bi.ISBN,
+		bi.ISSN,
+		bi.Institution,
+		bi.Journal,
+		bi.Metanote,
+		bi.Note,
+		bi.Number,
+		bi.Numpages,
+		bi.Pages,
+		bi.Publisher,
+		bi.School,
+		bi.Series,
+		bi.URL,
+		bi.TechreportType,
+		bi.Version,
+		bi.Volume,
+		bi.Year,
+	)
 	if err != nil {
-		log.Fatal(err)
+		return false, err
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	return affected > 0, nil
+}
+
+func exportBibliography(db *sql.DB, opts options) (string, int, error) {
+	rows, err := db.Query(`SELECT cite_name, cite_type, title, author, booktitle, doi, edition, isbn, issn, institution, journal, metanote, note, number, numpages, pages, publisher, school, series, type, url, version, volume, year FROM entries ORDER BY cite_name ASC`)
+	if err != nil {
+		return "", 0, err
 	}
 	defer rows.Close()
+
+	bib := bibtex.NewBibTex()
+
 	for rows.Next() {
 		row := bibfuse.NewBibItem()
-		err = rows.Scan(&row.CiteName, &row.CiteType, &row.Title, &row.Author, &row.Booktitle, &row.DOI, &row.Edition, &row.ISBN, &row.ISSN, &row.Institution, &row.Journal, &row.Metanote, &row.Note, &row.Number, &row.Numpages, &row.Pages, &row.Publisher, &row.School, &row.Series, &row.TechreportType, &row.URL, &row.Version, &row.Volume, &row.Year)
-		if err != nil {
-			log.Fatal(err)
+		if err := rows.Scan(
+			&row.CiteName,
+			&row.CiteType,
+			&row.Title,
+			&row.Author,
+			&row.Booktitle,
+			&row.DOI,
+			&row.Edition,
+			&row.ISBN,
+			&row.ISSN,
+			&row.Institution,
+			&row.Journal,
+			&row.Metanote,
+			&row.Note,
+			&row.Number,
+			&row.Numpages,
+			&row.Pages,
+			&row.Publisher,
+			&row.School,
+			&row.Series,
+			&row.TechreportType,
+			&row.URL,
+			&row.Version,
+			&row.Volume,
+			&row.Year,
+		); err != nil {
+			return "", 0, err
 		}
 		entry := row.ToBibEntry()
 		bib.AddEntry(entry)
-		err = rows.Err()
-		if err != nil {
-			log.Fatal(err)
-		}
 	}
-	log.Printf("%v contains %v entries", dbPath, len(bib.Entries))
 
-	// leave out (OPTIONAL) and (TODO) if the options are given
-	outString := bib.PrettyString()
-	if *noOption {
-		re := regexp.MustCompile("(?m)[\r\n]+^.*(OPTIONAL).*$")
-		outString = re.ReplaceAllString(outString, "")
+	if err := rows.Err(); err != nil {
+		return "", 0, err
 	}
-	if *noTodo {
-		re := regexp.MustCompile("(?m)[\r\n]+^.*(TODO).*$")
-		outString = re.ReplaceAllString(outString, "")
-	}
-	if !*showEmpty {
-		re := regexp.MustCompile("(?m)[\r\n]+^.*\"\".*$")
-		outString = re.ReplaceAllString(outString, "")
-	}
-	// replace multiple backslash
+
+	outString := applyOutputFilters(bib.PrettyString(), opts)
 	outString = bibfuse.BackslashCleaner(outString)
+	return outString, len(bib.Entries), nil
+}
 
-	// write to a file
-	outPath := filepath.Join(".", *outFile)
-	writer, err := os.OpenFile(outPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
-	if err != nil {
-		log.Fatal(err)
+func applyOutputFilters(input string, opts options) string {
+	out := input
+	if opts.noOptional {
+		out = optionalLineRE.ReplaceAllString(out, "")
 	}
-	defer writer.Close()
-	fmt.Fprintf(writer, outString)
-	log.Printf("%v entries written to %v", len(bib.Entries), outPath)
+	if opts.noTodo {
+		out = todoLineRE.ReplaceAllString(out, "")
+	}
+	if !opts.showEmpty {
+		out = emptyLineRE.ReplaceAllString(out, "")
+	}
+	return out
 }
