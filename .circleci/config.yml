@@ -1,20 +1,23 @@
 version: 2.1
 
+orbs:
+  codecov: codecov/codecov@6.1.0
+
 jobs:
   build:
     docker:
-      - image: circleci/golang:1.15
+      - image: golang:1.26.10
     steps:
       - checkout
       - run:
           name: Run tests and coverage
-          command: go test -race -coverprofile=coverage.txt -covermode=atomic
-      - run:
-          name: Upload coverage to Codecov
-          command: bash <(curl -s https://codecov.io/bash)
+          command: go test -race -coverprofile=coverage.txt -covermode=atomic ./...
+      - codecov/upload:
+          files: coverage.txt
+          disable_search: true
+          fail_on_error: true
 
-workflow:
-  version: 2.1
+workflows:
   build-test:
     jobs:
       - build
