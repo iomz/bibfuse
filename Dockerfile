@@ -1,14 +1,11 @@
 # syntax=docker/dockerfile:1
 
-# Alpine is chosen for its small footprint
-# compared to Ubuntu
-FROM golang:1.16-alpine
+FROM golang:1.26.10-alpine3.24 AS build
 
-RUN set -ex && \
-  apk add --no-cache \
-      gcc \
-      musl-dev && \
-  rm -rf /var/cache/apk/*
+# Fail rather than silently selecting a different Go toolchain.
+ENV GOTOOLCHAIN=local CGO_ENABLED=1
+
+RUN apk add --no-cache gcc musl-dev
 
 WORKDIR /app
 
@@ -19,15 +16,19 @@ RUN go mod download
 
 # Copy the go files
 COPY *.go ./
-ADD cmd ./cmd
-
-# Build
-WORKDIR /app/cmd/bibfuse
-RUN go build -o /docker-bibfuse
-
-# Copy the config file
-WORKDIR /app
+COPY cmd ./cmd
 COPY bibfuse.toml ./
 
-ENTRYPOINT ["/docker-bibfuse"]
+# Build
+RUN go test ./... && go vet ./... && \
+    go build -o /out/bibfuse ./cmd/bibfuse && \
+    go version -m /out/bibfuse
+
+FROM alpine:3.24
+RUN apk add --no-cache ca-certificates
+WORKDIR /app
+COPY --from=build /out/bibfuse /usr/local/bin/bibfuse
+COPY bibfuse.toml ./
+
+ENTRYPOINT ["bibfuse"]
 CMD ["-config", "/app/bibfuse.toml"]

@@ -138,7 +138,7 @@ func run(opts options, files []string) error {
 		return err
 	}
 
-	dbPath := filepath.Join(".", opts.dbFile)
+	dbPath := opts.dbFile
 	db, err := createDB(dbPath)
 	if err != nil {
 		return fmt.Errorf("table creation failed: %w", err)
@@ -157,7 +157,7 @@ func run(opts options, files []string) error {
 	}
 	log.Printf("%s contains %d entries", dbPath, entryCount)
 
-	outPath := filepath.Join(".", opts.outFile)
+	outPath := opts.outFile
 	if err := os.WriteFile(outPath, []byte(content), 0o644); err != nil {
 		return err
 	}
@@ -232,7 +232,7 @@ func createDB(dbPath string) (*sql.DB, error) {
 func importBibFiles(db *sql.DB, filters bibfuse.Filters, oneofs bibfuse.Oneofs, opts options, files []string) (int, error) {
 	newItemCount := 0
 	for _, fileName := range files {
-		filePath := filepath.Join(".", fileName)
+		filePath := fileName
 		log.Printf("parsing %s", filePath)
 
 		reader, err := os.Open(filePath)

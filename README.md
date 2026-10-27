@@ -41,7 +41,19 @@ If no `.bib` files are given, it just reads the database and updates the BibTex 
 
 ## Install <a name="install"/>
 ```console
-% go get -u github.com/iomz/bibfuse/...
+% go install github.com/iomz/bibfuse/cmd/bibfuse@latest
+```
+
+Requires Go 1.26.10 or newer, CGO, and a C compiler.
+For an installed binary, pass `-config /path/to/bibfuse.toml` or keep the config in the working directory.
+
+### Build from source
+
+```sh
+go test -race ./...
+go build -o bin/bibfuse ./cmd/bibfuse
+go version -m bin/bibfuse
+docker build -t bibfuse:local .
 ```
 
 ## Usage <a name="usage"/>
