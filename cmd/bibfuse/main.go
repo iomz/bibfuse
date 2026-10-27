@@ -124,8 +124,17 @@ func parseFlags() (options, []string) {
 }
 
 func printVersion() {
-	bi, _ := debug.ReadBuildInfo()
-	fmt.Printf("%v\n", bi.Main.Version)
+	fmt.Println(buildVersion(debug.ReadBuildInfo()))
+}
+
+func buildVersion(bi *debug.BuildInfo, ok bool) string {
+	if !ok || bi == nil {
+		return "unknown"
+	}
+	if bi.Main.Version == "" {
+		return "(devel)"
+	}
+	return bi.Main.Version
 }
 
 func run(opts options, files []string) error {
